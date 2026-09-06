@@ -1,0 +1,449 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local MarketplaceService = game:GetService("MarketplaceService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local NitroLibrary = {}
+NitroLibrary.__index = NitroLibrary
+
+function NitroLibrary.new(customTitle, openButtonImage)
+    local self = setmetatable({}, NitroLibrary)
+    self.TitleText = customTitle or "Nitro"
+    self.AllMenuButtons = {}
+    self.AllPages = {}
+
+    self.ScreenGui = Instance.new("ScreenGui")
+    self.ScreenGui.Name = "NitroLibraryGui"
+    self.ScreenGui.ResetOnSpawn = false
+    self.ScreenGui.Parent = playerGui
+
+    -- ปุ่มเปิด/ปิด (ImageButton ขนาด 50x50 รองรับการลากและเปลี่ยนรูปภาพ)
+    self.OpenButton = Instance.new("ImageButton")
+    self.OpenButton.Name = "OpenButton"
+    self.OpenButton.Size = UDim2.new(0, 50, 0, 50)
+    self.OpenButton.Position = UDim2.new(0, 30, 0.4, 0)
+    self.OpenButton.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    self.OpenButton.BackgroundTransparency = 0.2
+    self.OpenButton.Image = openButtonImage or ""
+    self.OpenButton.BorderSizePixel = 0
+    self.OpenButton.Parent = self.ScreenGui
+
+    Instance.new("UICorner", self.OpenButton).CornerRadius = UDim.new(0, 12)
+
+    -- ระบบลากปุ่มเปิด-ปิด (Draggable Open Button)
+    local btnDragging, btnDragStart, btnStartPos
+    self.OpenButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            btnDragging = true
+            btnDragStart = input.Position
+            btnStartPos = self.OpenButton.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then btnDragging = false end
+            end)
+        end
+    end)
+
+    -- หน้าต่างหลัก (Main Frame)
+    self.MainFrame = Instance.new("Frame")
+    self.MainFrame.Name = "MainFrame"
+    self.MainFrame.Size = UDim2.new(0, 520, 0, 320)
+    self.MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    self.MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    self.MainFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 35)
+    self.MainFrame.BackgroundTransparency = 0.2
+    self.MainFrame.BorderSizePixel = 0
+    self.MainFrame.ClipsDescendants = true
+    self.MainFrame.Visible = false
+    self.MainFrame.Parent = self.ScreenGui
+
+    Instance.new("UICorner", self.MainFrame).CornerRadius = UDim.new(0, 20)
+
+    -- ระบบลากหน้าต่างหลัก
+    local dragging, dragStart, startPos
+    self.MainFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = self.MainFrame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            if btnDragging then
+                local delta = input.Position - btnDragStart
+                self.OpenButton.Position = UDim2.new(btnStartPos.X.Scale, btnStartPos.X.Offset + delta.X, btnStartPos.Y.Scale, btnStartPos.Y.Offset + delta.Y)
+            elseif dragging then
+                local delta = input.Position - dragStart
+                self.MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            end
+        end
+    end)
+
+    local isOpen = false
+    self.OpenButton.MouseButton1Click:Connect(function()
+        if btnDragging then return end -- ป้องกันไม่ให้เปิดหน้าต่างตอนลากปุ่ม
+        isOpen = not isOpen
+        if isOpen then
+            self.MainFrame.Visible = true
+            self.MainFrame.Size = UDim2.new(0, 0, 0, 0)
+            TweenService:Create(self.MainFrame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 520, 0, 320)}):Play()
+        else
+            local closeTween = TweenService:Create(self.MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)})
+            closeTween:Play()
+            closeTween.Completed:Connect(function()
+                if not isOpen then self.MainFrame.Visible = false end
+            end)
+        end
+    end)
+
+    local headerFrame = Instance.new("Frame")
+    headerFrame.Size = UDim2.new(1, 0, 0, 45)
+    headerFrame.BackgroundTransparency = 1
+    headerFrame.Parent = self.MainFrame
+
+    local nitroLabel = Instance.new("TextLabel")
+    nitroLabel.Size = UDim2.new(1, -100, 1, 0)
+    nitroLabel.Position = UDim2.new(0, 95, 0, 0)
+    nitroLabel.BackgroundTransparency = 1
+    nitroLabel.Font = Enum.Font.SourceSansBold
+    nitroLabel.Text = self.TitleText
+    nitroLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nitroLabel.TextSize = 20
+    nitroLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nitroLabel.Parent = headerFrame
+
+    self.Sidebar = Instance.new("ScrollingFrame")
+    self.Sidebar.Size = UDim2.new(0, 140, 1, -46)
+    self.Sidebar.Position = UDim2.new(0, 0, 0, 46)
+    self.Sidebar.BackgroundTransparency = 1
+    self.Sidebar.BorderSizePixel = 0
+    self.Sidebar.CanvasSize = UDim2.new(0, 0, 0, 200)
+    self.Sidebar.ScrollBarThickness = 2
+    self.Sidebar.Parent = self.MainFrame
+
+    local sidebarLayout = Instance.new("UIListLayout")
+    sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    sidebarLayout.Padding = UDim.new(0, 8)
+    sidebarLayout.Parent = self.Sidebar
+
+    self.ContentArea = Instance.new("Frame")
+    self.ContentArea.Size = UDim2.new(1, -141, 1, -46)
+    self.ContentArea.Position = UDim2.new(0, 141, 0, 46)
+    self.ContentArea.BackgroundTransparency = 1
+    self.ContentArea.ClipsDescendants = true
+    self.ContentArea.Parent = self.MainFrame
+
+    return self
+end
+
+function NitroLibrary:AddTab(order, menuName, emojiIcon)
+    local menuBtn = Instance.new("TextButton")
+    menuBtn.Size = UDim2.new(1, -20, 0, 40)
+    menuBtn.Position = UDim2.new(0, 10, 0, 0)
+    menuBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    menuBtn.BackgroundTransparency = 0.8
+    menuBtn.Text = emojiIcon .. "  " .. menuName
+    menuBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    menuBtn.Font = Enum.Font.SourceSansSemibold
+    menuBtn.TextSize = 15
+    menuBtn.BorderSizePixel = 0
+    menuBtn.LayoutOrder = order
+    menuBtn.Parent = self.Sidebar
+
+    Instance.new("UICorner", menuBtn).CornerRadius = UDim.new(0, 10)
+
+    local page = Instance.new("Frame")
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.Position = UDim2.new(0, 0, 0, 0)
+    page.BackgroundTransparency = 1
+    page.Visible = false
+    page.Parent = self.ContentArea
+
+    table.insert(self.AllMenuButtons, menuBtn)
+    table.insert(self.AllPages, page)
+
+    menuBtn.MouseButton1Click:Connect(function()
+        for _, p in ipairs(self.AllPages) do p.Visible = (p == page) end
+        for _, m in ipairs(self.AllMenuButtons) do
+            TweenService:Create(m, TweenInfo.new(0.3), {BackgroundTransparency = (m == menuBtn) and 0.3 or 0.8}):Play()
+        end
+    end)
+
+    if #self.AllPages == 1 then
+        page.Visible = true
+        menuBtn.BackgroundTransparency = 0.3
+    end
+
+    return page
+end
+
+function NitroLibrary:AddHomeDashboard(page)
+    local profileBox = Instance.new("Frame")
+    profileBox.Size = UDim2.new(1, -20, 0, 75)
+    profileBox.Position = UDim2.new(0, 10, 0, 10)
+    profileBox.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    profileBox.BackgroundTransparency = 0.4
+    profileBox.BorderSizePixel = 0
+    profileBox.Parent = page
+    Instance.new("UICorner", profileBox).CornerRadius = UDim.new(0, 12)
+
+    local bigAvatar = Instance.new("ImageLabel")
+    bigAvatar.Size = UDim2.new(0, 50, 0, 50)
+    bigAvatar.Position = UDim2.new(0, 12, 0.5, -25)
+    bigAvatar.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+    bigAvatar.Image = Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+    bigAvatar.Parent = profileBox
+    Instance.new("UICorner", bigAvatar).CornerRadius = UDim.new(1, 0)
+
+    local displayNameLabel = Instance.new("TextLabel")
+    displayNameLabel.Size = UDim2.new(1, -78, 0, 20)
+    displayNameLabel.Position = UDim2.new(0, 72, 0, 16)
+    displayNameLabel.BackgroundTransparency = 1
+    displayNameLabel.Font = Enum.Font.SourceSansBold
+    displayNameLabel.Text = player.DisplayName
+    displayNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    displayNameLabel.TextSize = 17
+    displayNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    displayNameLabel.Parent = profileBox
+
+    local usernameLabel = Instance.new("TextLabel")
+    usernameLabel.Size = UDim2.new(1, -78, 0, 18)
+    usernameLabel.Position = UDim2.new(0, 72, 0, 38)
+    usernameLabel.BackgroundTransparency = 1
+    usernameLabel.Font = Enum.Font.SourceSans
+    usernameLabel.Text = "@" .. player.Name
+    usernameLabel.TextColor3 = Color3.fromRGB(180, 180, 190)
+    usernameLabel.TextSize = 13
+    usernameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    usernameLabel.Parent = profileBox
+
+    local mapBox = Instance.new("Frame")
+    mapBox.Size = UDim2.new(0.47, -5, 0, 42)
+    mapBox.Position = UDim2.new(0, 10, 0, 90)
+    mapBox.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    mapBox.BackgroundTransparency = 0.4
+    mapBox.BorderSizePixel = 0
+    mapBox.Parent = page
+    Instance.new("UICorner", mapBox).CornerRadius = UDim.new(0, 10)
+
+    local mapNameLabel = Instance.new("TextLabel")
+    mapNameLabel.Size = UDim2.new(1, -10, 0, 20)
+    mapNameLabel.Position = UDim2.new(0, 8, 0, 18)
+    mapNameLabel.BackgroundTransparency = 1
+    mapNameLabel.Font = Enum.Font.SourceSansBold
+    mapNameLabel.Text = "Roblox Game"
+    mapNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    mapNameLabel.TextSize = 13
+    mapNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    mapNameLabel.Parent = mapBox
+
+    task.spawn(function()
+        local success, gameInfo = pcall(function() return MarketplaceService:GetProductInfo(game.PlaceId) end)
+        if success and gameInfo and gameInfo.Name then mapNameLabel.Text = gameInfo.Name end
+    end)
+
+    local playerBox = Instance.new("Frame")
+    playerBox.Size = UDim2.new(0.47, -5, 0, 42)
+    playerBox.Position = UDim2.new(0.53, 5, 0, 90)
+    playerBox.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    playerBox.BackgroundTransparency = 0.4
+    playerBox.BorderSizePixel = 0
+    playerBox.Parent = page
+    Instance.new("UICorner", playerBox).CornerRadius = UDim.new(0, 10)
+
+    local playerValLabel = Instance.new("TextLabel")
+    playerValLabel.Size = UDim2.new(1, -10, 0, 20)
+    playerValLabel.Position = UDim2.new(0, 8, 0, 18)
+    playerValLabel.BackgroundTransparency = 1
+    playerValLabel.Font = Enum.Font.SourceSansBold
+    playerValLabel.Text = "0 / 0"
+    playerValLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    playerValLabel.TextSize = 14
+    playerValLabel.TextXAlignment = Enum.TextXAlignment.Left
+    playerValLabel.Parent = playerBox
+
+    local function updatePlayerCount()
+        playerValLabel.Text = #Players:GetPlayers() .. " / " .. Players.MaxPlayers
+    end
+    Players.PlayerAdded:Connect(updatePlayerCount)
+    Players.PlayerRemoving:Connect(updatePlayerCount)
+    updatePlayerCount()
+
+    local hpBox = Instance.new("Frame")
+    hpBox.Size = UDim2.new(0.47, -5, 0, 42)
+    hpBox.Position = UDim2.new(0, 10, 0, 136)
+    hpBox.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    hpBox.BackgroundTransparency = 0.4
+    hpBox.BorderSizePixel = 0
+    hpBox.Parent = page
+    Instance.new("UICorner", hpBox).CornerRadius = UDim.new(0, 10)
+
+    local hpValLabel = Instance.new("TextLabel")
+    hpValLabel.Size = UDim2.new(0.5, -8, 1, 0)
+    hpValLabel.Position = UDim2.new(0.5, 0, 0, 0)
+    hpValLabel.BackgroundTransparency = 1
+    hpValLabel.Font = Enum.Font.SourceSansBold
+    hpValLabel.Text = "100/100"
+    hpValLabel.TextColor3 = Color3.fromRGB(52, 199, 89)
+    hpValLabel.TextSize = 14
+    hpValLabel.TextXAlignment = Enum.TextXAlignment.Right
+    hpValLabel.Parent = hpBox
+
+    task.spawn(function()
+        while true do
+            task.wait(0.2)
+            local char = player.Character
+            if char then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hum then hpValLabel.Text = math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth) end
+            end
+        end
+    end)
+end
+
+function NitroLibrary:AddToggle(page, text, callback)
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, -20, 0, 55)
+    row.Position = UDim2.new(0, 10, 0, 15)
+    row.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    row.BackgroundTransparency = 0.4
+    row.BorderSizePixel = 0
+    row.Parent = page
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 12)
+
+    local rowLabel = Instance.new("TextLabel")
+    rowLabel.Size = UDim2.new(0.6, 0, 1, 0)
+    rowLabel.Position = UDim2.new(0, 15, 0, 0)
+    rowLabel.BackgroundTransparency = 1
+    rowLabel.Font = Enum.Font.SourceSansBold
+    rowLabel.Text = text
+    rowLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    rowLabel.TextSize = 15
+    rowLabel.TextXAlignment = Enum.TextXAlignment.Left
+    rowLabel.Parent = row
+
+    local toggleBtn = Instance.new("TextButton")
+    toggleBtn.Size = UDim2.new(0, 50, 0, 28)
+    toggleBtn.Position = UDim2.new(1, -60, 0.5, -14)
+    toggleBtn.BackgroundColor3 = Color3.fromRGB(110, 110, 120)
+    toggleBtn.BackgroundTransparency = 0.1
+    toggleBtn.AutoButtonColor = false
+    toggleBtn.Text = ""
+    toggleBtn.BorderSizePixel = 0
+    toggleBtn.Parent = row
+    Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
+
+    local circle = Instance.new("Frame")
+    circle.Size = UDim2.new(0, 22, 0, 22)
+    circle.Position = UDim2.new(0, 3, 0, 3)
+    circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    circle.BorderSizePixel = 0
+    circle.Parent = toggleBtn
+    Instance.new("UICorner", circle).CornerRadius = UDim.new(1, 0)
+
+    local isOn = false
+    toggleBtn.MouseButton1Click:Connect(function()
+        isOn = not isOn
+        local targetColor = isOn and Color3.fromRGB(52, 199, 89) or Color3.fromRGB(110, 110, 120)
+        local targetPos = isOn and UDim2.new(1, -25, 0, 3) or UDim2.new(0, 3, 0, 3)
+        TweenService:Create(toggleBtn, TweenInfo.new(0.25), {BackgroundColor3 = targetColor}):Play()
+        TweenService:Create(circle, TweenInfo.new(0.35, Enum.EasingStyle.Back), {Position = targetPos}):Play()
+        if callback then callback(isOn) end
+    end)
+end
+
+function NitroLibrary:AddSlider(page, text, callback)
+    local sliderBox = Instance.new("Frame")
+    sliderBox.Size = UDim2.new(1, -20, 0, 65)
+    sliderBox.Position = UDim2.new(0, 10, 0, 82)
+    sliderBox.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    sliderBox.BackgroundTransparency = 0.4
+    sliderBox.BorderSizePixel = 0
+    sliderBox.Parent = page
+    Instance.new("UICorner", sliderBox).CornerRadius = UDim.new(0, 12)
+
+    local sliderTitle = Instance.new("TextLabel")
+    sliderTitle.Size = UDim2.new(0.6, 0, 0, 20)
+    sliderTitle.Position = UDim2.new(0, 15, 0, 10)
+    sliderTitle.BackgroundTransparency = 1
+    sliderTitle.Font = Enum.Font.SourceSansBold
+    sliderTitle.Text = text
+    sliderTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    sliderTitle.TextSize = 14
+    sliderTitle.TextXAlignment = Enum.TextXAlignment.Left
+    sliderTitle.Parent = sliderBox
+
+    local sliderValText = Instance.new("TextLabel")
+    sliderValText.Size = UDim2.new(0.4, -15, 0, 20)
+    sliderValText.Position = UDim2.new(0.6, 0, 0, 10)
+    sliderValText.BackgroundTransparency = 1
+    sliderValText.Font = Enum.Font.SourceSansBold
+    sliderValText.Text = "50%"
+    sliderValText.TextColor3 = Color3.fromRGB(100, 180, 255)
+    sliderValText.TextSize = 14
+    sliderValText.TextXAlignment = Enum.TextXAlignment.Right
+    sliderValText.Parent = sliderBox
+
+    local sliderTrack = Instance.new("Frame")
+    sliderTrack.Size = UDim2.new(1, -30, 0, 8)
+    sliderTrack.Position = UDim2.new(0, 15, 0, 42)
+    sliderTrack.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    sliderTrack.BorderSizePixel = 0
+    sliderTrack.Parent = sliderBox
+    Instance.new("UICorner", sliderTrack).CornerRadius = UDim.new(1, 0)
+
+    local sliderFill = Instance.new("Frame")
+    sliderFill.Size = UDim2.new(0.5, 0, 1, 0)
+    sliderFill.BackgroundColor3 = Color3.fromRGB(52, 199, 89)
+    sliderFill.BorderSizePixel = 0
+    sliderFill.Parent = sliderTrack
+    Instance.new("UICorner", sliderFill).CornerRadius = UDim.new(1, 0)
+
+    local sliderKnob = Instance.new("Frame")
+    sliderKnob.Size = UDim2.new(0, 18, 0, 18)
+    sliderKnob.AnchorPoint = Vector2.new(0.5, 0.5)
+    sliderKnob.Position = UDim2.new(0.5, 0, 0.5, 0)
+    sliderKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    sliderKnob.BorderSizePixel = 0
+    sliderKnob.Parent = sliderTrack
+    Instance.new("UICorner", sliderKnob).CornerRadius = UDim.new(1, 0)
+
+    local isSliding = false
+    local function updateSlider(input)
+        local pos = sliderTrack.AbsolutePosition.X
+        local size = sliderTrack.AbsoluteSize.X
+        local percent = math.clamp((input.Position.X - pos) / size, 0, 1)
+        sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+        sliderKnob.Position = UDim2.new(percent, 0, 0.5, 0)
+        local val = math.floor(percent * 100)
+        sliderValText.Text = val .. "%"
+        if callback then callback(val) end
+    end
+
+    sliderTrack.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isSliding = true
+            updateSlider(input)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isSliding = false
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if isSliding and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            updateSlider(input)
+        end
+    end)
+end
+
+return NitroLibrary
