@@ -500,4 +500,28 @@ function NitroLibrary:AddHomeDashboard(homePage)
     playerTitle.Text = "👥 PLAYERS"
     playerTitle.TextColor3 = Color3.fromRGB(160, 160, 170)
     playerTitle.TextSize = 10
-    playerTitle.TextXAlignment = E
+    playerTitle.TextXAlignment = Enum.TextXAlignment.Left
+    playerTitle.Parent = playerBox
+
+    local playerValLabel = Instance.new("TextLabel")
+    playerValLabel.Size = UDim2.new(1, -10, 0, 20)
+    playerValLabel.Position = UDim2.new(0, 8, 0, 18)
+    playerValLabel.BackgroundTransparency = 1
+    playerValLabel.Font = Enum.Font.SourceSansBold
+    playerValLabel.Text = "0 / 0"
+    playerValLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    playerValLabel.TextSize = 14
+    playerValLabel.TextXAlignment = Enum.TextXAlignment.Left
+    playerValLabel.Parent = playerBox
+
+    local function updatePlayerCount()
+        local currentCount = #Players:GetPlayers()
+        local maxCount = Players.MaxPlayers
+        playerValLabel.Text = currentCount .. " / " .. maxCount
+    end
+    Players.PlayerAdded:Connect(updatePlayerCount)
+    Players.PlayerRemoving:Connect(updatePlayerCount)
+    updatePlayerCount()
+end
+
+return NitroLibrary
