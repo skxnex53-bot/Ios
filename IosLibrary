@@ -459,18 +459,21 @@ function NitroLibrary:AddTextbox(page, text, emoji, placeholder, callback)
     end)
 end
 
-function NitroLibrary:AddDropdown(page, text, emoji, options, callback)
-    local isOpen = false
-    local baseHeight = 50
-    local itemHeight = 35
-    local maxDisplay = #options * itemHeight
 
+    dropBtn.MouseButton1Click:Connect(function()
+        isOpen = not isOpen
+        local targetH = isOpen and (baseHeight + maxDisplay + 10) or baseHeight
+        local targetRot = isOpen and 180 or 0
+        TweenService:Create(row, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {Size = UDim2.new(1, -20, 0, targetH)}):Play()
+        TweenService:Create(arrowLabel, TweenInfo.new(0.25), {Rotation = targetRot}):Play()
+    end)
+end
+function NitroLibrary:AddDropdown(page, text, emoji, options, callback)
     local row = Instance.new("Frame")
-    row.Size = UDim2.new(1, -20, 0, baseHeight)
+    row.Size = UDim2.new(1, -20, 0, 50)
     row.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
     row.BackgroundTransparency = 0.4
     row.BorderSizePixel = 0
-    row.ClipsDescendants = true
     row.Parent = page
 
     local rCorner = Instance.new("UICorner")
@@ -483,14 +486,8 @@ function NitroLibrary:AddDropdown(page, text, emoji, options, callback)
     rStroke.Thickness = 1
     rStroke.Parent = row
 
-    local dropBtn = Instance.new("TextButton")
-    dropBtn.Size = UDim2.new(1, 0, 0, 50)
-    dropBtn.BackgroundTransparency = 1
-    dropBtn.Text = ""
-    dropBtn.Parent = row
-
     local rowLabel = Instance.new("TextLabel")
-    rowLabel.Size = UDim2.new(0.7, 0, 0, 50)
+    rowLabel.Size = UDim2.new(0.7, 0, 1, 0)
     rowLabel.Position = UDim2.new(0, 15, 0, 0)
     rowLabel.BackgroundTransparency = 1
     rowLabel.Font = Enum.Font.SourceSansBold
@@ -498,60 +495,123 @@ function NitroLibrary:AddDropdown(page, text, emoji, options, callback)
     rowLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     rowLabel.TextSize = 15
     rowLabel.TextXAlignment = Enum.TextXAlignment.Left
-    rowLabel.Parent = dropBtn
+    rowLabel.Parent = row
 
     local arrowLabel = Instance.new("TextLabel")
     arrowLabel.Size = UDim2.new(0, 30, 0, 50)
     arrowLabel.Position = UDim2.new(1, -40, 0, 0)
     arrowLabel.BackgroundTransparency = 1
     arrowLabel.Font = Enum.Font.SourceSansBold
-    arrowLabel.Text = "▼"
+    arrowLabel.Text = "›"
     arrowLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    arrowLabel.TextSize = 14
-    arrowLabel.Parent = dropBtn
+    arrowLabel.TextSize = 20
+    arrowLabel.TextXAlignment = Enum.TextXAlignment.Center
+    arrowLabel.Parent = row
 
-    local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, -20, 0, maxDisplay)
-    container.Position = UDim2.new(0, 10, 0, 52)
-    container.BackgroundTransparency = 1
-    container.Parent = row
-
-    local cLayout = Instance.new("UIListLayout")
-    cLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    cLayout.Padding = UDim.new(0, 4)
-    cLayout.Parent = container
-
-    for _, opt in ipairs(options) do
-        local optBtn = Instance.new("TextButton")
-        optBtn.Size = UDim2.new(1, 0, 0, 32)
-        optBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-        optBtn.BackgroundTransparency = 0.5
-        optBtn.Text = "  " .. opt
-        optBtn.TextColor3 = Color3.fromRGB(220, 220, 230)
-        optBtn.Font = Enum.Font.SourceSansSemibold
-        optBtn.TextSize = 14
-        optBtn.TextXAlignment = Enum.TextXAlignment.Left
-        optBtn.BorderSizePixel = 0
-        optBtn.Parent = container
-
-        local oCorner = Instance.new("UICorner")
-        oCorner.CornerRadius = UDim.new(0, 8)
-        oCorner.Parent = optBtn
-
-        optBtn.MouseButton1Click:Connect(function()
-            isOpen = false
-            TweenService:Create(row, TweenInfo.new(0.2), {Size = UDim2.new(1, -20, 0, baseHeight)}):Play()
-            TweenService:Create(arrowLabel, TweenInfo.new(0.2), {Rotation = 0}):Play()
-            if callback then callback(opt) end
-        end)
-    end
+    local dropBtn = Instance.new("TextButton")
+    dropBtn.Size = UDim2.new(1, 0, 1, 0)
+    dropBtn.BackgroundTransparency = 1
+    dropBtn.Text = ""
+    dropBtn.Parent = row
 
     dropBtn.MouseButton1Click:Connect(function()
-        isOpen = not isOpen
-        local targetH = isOpen and (baseHeight + maxDisplay + 10) or baseHeight
-        local targetRot = isOpen and 180 or 0
-        TweenService:Create(row, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {Size = UDim2.new(1, -20, 0, targetH)}):Play()
-        TweenService:Create(arrowLabel, TweenInfo.new(0.25), {Rotation = targetRot}):Play()
+        -- สร้าง Popup เบื้องหลังและหน้าต่างสไตล์ iOS กลางจอ
+        local blurOverlay = Instance.new("TextButton")
+        blurOverlay.Size = UDim2.new(1, 0, 1, 0)
+        blurOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        blurOverlay.BackgroundTransparency = 0.6
+        blurOverlay.Text = ""
+        blurOverlay.Parent = self.ScreenGui
+
+        local popupBox = Instance.new("Frame")
+        popupBox.Size = UDim2.new(0, 280, 0, 320)
+        popupBox.Position = UDim2.new(0.5, -140, 0.5, -160)
+        popupBox.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+        popupBox.BackgroundTransparency = 0.2
+        popupBox.BorderSizePixel = 0
+        popupBox.ClipsDescendants = true
+        popupBox.Parent = blurOverlay
+
+        local pCorner = Instance.new("UICorner")
+        pCorner.CornerRadius = UDim.new(0, 16)
+        pCorner.Parent = popupBox
+
+        local pStroke = Instance.new("UIStroke")
+        pStroke.Color = Color3.fromRGB(255, 255, 255)
+        pStroke.Transparency = 0.6
+        pStroke.Thickness = 1
+        pStroke.Parent = popupBox
+
+        local titleLabel = Instance.new("TextLabel")
+        titleLabel.Size = UDim2.new(1, 0, 0, 45)
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Font = Enum.Font.SourceSansBold
+        titleLabel.Text = emoji .. "  " .. text
+        titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        titleLabel.TextSize = 16
+        titleLabel.Parent = popupBox
+
+        local scrollOpt = Instance.new("ScrollingFrame")
+        scrollOpt.Size = UDim2.new(1, -20, 1, -110)
+        scrollOpt.Position = UDim2.new(0, 10, 0, 45)
+        scrollOpt.BackgroundTransparency = 1
+        scrollOpt.BorderSizePixel = 0
+        scrollOpt.CanvasSize = UDim2.new(0, 0, 0, 0)
+        scrollOpt.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        scrollOpt.ScrollBarThickness = 2
+        scrollOpt.Parent = popupBox
+
+        local sLayout = Instance.new("UIListLayout")
+        sLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        sLayout.Padding = UDim.new(0, 6)
+        sLayout.Parent = scrollOpt
+
+        for _, opt in ipairs(options) do
+            local optBtn = Instance.new("TextButton")
+            optBtn.Size = UDim2.new(1, 0, 0, 40)
+            optBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+            optBtn.BackgroundTransparency = 0.4
+            optBtn.Text = "  " .. tostring(opt)
+            optBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            optBtn.Font = Enum.Font.SourceSansSemibold
+            optBtn.TextSize = 14
+            optBtn.TextXAlignment = Enum.TextXAlignment.Left
+            optBtn.BorderSizePixel = 0
+            optBtn.Parent = scrollOpt
+
+            local oCorner = Instance.new("UICorner")
+            oCorner.CornerRadius = UDim.new(0, 10)
+            oCorner.Parent = optBtn
+
+            optBtn.MouseButton1Click:Connect(function()
+                if callback then callback(opt) end
+                blurOverlay:Destroy()
+            end)
+        end
+
+        local closeFooter = Instance.new("TextButton")
+        closeFooter.Size = UDim2.new(1, -20, 0, 40)
+        closeFooter.Position = UDim2.new(0, 10, 1, -45)
+        closeFooter.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+        closeFooter.BackgroundTransparency = 0.3
+        closeFooter.Text = "ปิดหน้าต่าง"
+        closeFooter.TextColor3 = Color3.fromRGB(255, 95, 86)
+        closeFooter.Font = Enum.Font.SourceSansBold
+        closeFooter.TextSize = 14
+        closeFooter.BorderSizePixel = 0
+        closeFooter.Parent = popupBox
+
+        local fCorner = Instance.new("UICorner")
+        fCorner.CornerRadius = UDim.new(0, 10)
+        fCorner.Parent = closeFooter
+
+        closeFooter.MouseButton1Click:Connect(function()
+            blurOverlay:Destroy()
+        end)
+        
+        blurOverlay.MouseButton1Click:Connect(function()
+            blurOverlay:Destroy()
+        end)
     end)
 end
 
