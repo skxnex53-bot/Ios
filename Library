@@ -1,0 +1,717 @@
+local NitroLibrary = {}
+NitroLibrary.__index = NitroLibrary
+
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+function NitroLibrary.new(titleText, iconId)
+    local self = setmetatable({}, NitroLibrary)
+
+    self.ScreenGui = Instance.new("ScreenGui")
+    self.ScreenGui.Name = "NitroLibraryGui"
+    self.ScreenGui.ResetOnSpawn = false
+    self.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    
+    if syn and syn.protect_gui then
+        syn.protect_gui(self.ScreenGui)
+        self.ScreenGui.Parent = game.CoreGui
+    elseif gethui then
+        self.ScreenGui.Parent = gethui()
+    else
+        self.ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    end
+
+    self.ToggleBtn = Instance.new("TextButton")
+    self.ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
+    self.ToggleBtn.Position = UDim2.new(0, 20, 0, 150)
+    self.ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    self.ToggleBtn.BackgroundTransparency = 0.3
+    self.ToggleBtn.Text = "GUI"
+    self.ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    self.ToggleBtn.Font = Enum.Font.SourceSansBold
+    self.ToggleBtn.TextSize = 14
+    self.ToggleBtn.Parent = self.ScreenGui
+
+    local tCorner = Instance.new("UICorner")
+    tCorner.CornerRadius = UDim.new(0, 12)
+    tCorner.Parent = self.ToggleBtn
+
+    local tStroke = Instance.new("UIStroke")
+    tStroke.Color = Color3.fromRGB(255, 255, 255)
+    tStroke.Transparency = 0.7
+    tStroke.Thickness = 1
+    tStroke.Parent = self.ToggleBtn
+
+    self.MainFrame = Instance.new("Frame")
+    self.MainFrame.Size = UDim2.new(0, 520, 0, 340)
+    self.MainFrame.Position = UDim2.new(0.5, -260, 0.5, -170)
+    self.MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+    self.MainFrame.BackgroundTransparency = 0.25
+    self.MainFrame.BorderSizePixel = 0
+    self.MainFrame.ClipsDescendants = true
+    self.MainFrame.Parent = self.ScreenGui
+
+    local mCorner = Instance.new("UICorner")
+    mCorner.CornerRadius = UDim.new(0, 16)
+    mCorner.Parent = self.MainFrame
+
+    local mStroke = Instance.new("UIStroke")
+    mStroke.Color = Color3.fromRGB(255, 255, 255)
+    mStroke.Transparency = 0.7
+    mStroke.Thickness = 1
+    mStroke.Parent = self.MainFrame
+
+    self.TopBar = Instance.new("Frame")
+    self.TopBar.Size = UDim2.new(1, 0, 0, 35)
+    self.TopBar.BackgroundTransparency = 1
+    self.TopBar.Parent = self.MainFrame
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 1, 0)
+    title.BackgroundTransparency = 1
+    title.Font = Enum.Font.SourceSansBold
+    title.Text = titleText or "Nitro"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 15
+    title.Parent = self.TopBar
+
+    local function createMacBtn(color, xPos)
+        local btn = Instance.new("Frame")
+        btn.Size = UDim2.new(0, 12, 0, 12)
+        btn.Position = UDim2.new(0, xPos, 0, 11)
+        btn.BackgroundColor3 = color
+        btn.BorderSizePixel = 0
+        btn.Parent = self.TopBar
+        local c = Instance.new("UICorner")
+        c.CornerRadius = UDim.new(1, 0)
+        c.Parent = btn
+        return btn
+    end
+    createMacBtn(Color3.fromRGB(255, 95, 86), 15)
+    createMacBtn(Color3.fromRGB(255, 189, 46), 35)
+    createMacBtn(Color3.fromRGB(39, 201, 63), 55)
+
+    self.Sidebar = Instance.new("ScrollingFrame")
+    self.Sidebar.Size = UDim2.new(0, 130, 1, -45)
+    self.Sidebar.Position = UDim2.new(0, 10, 0, 40)
+    self.Sidebar.BackgroundTransparency = 1
+    self.Sidebar.BorderSizePixel = 0
+    self.Sidebar.CanvasSize = UDim2.new(0, 0, 0, 0)
+    self.Sidebar.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    self.Sidebar.ScrollBarThickness = 0
+    self.Sidebar.Parent = self.MainFrame
+
+    local sideLayout = Instance.new("UIListLayout")
+    sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    sideLayout.Padding = UDim.new(0, 6)
+    sideLayout.Parent = self.Sidebar
+
+    self.PagesContainer = Instance.new("Frame")
+    self.PagesContainer.Size = UDim2.new(1, -155, 1, -45)
+    self.PagesContainer.Position = UDim2.new(0, 145, 0, 40)
+    self.PagesContainer.BackgroundTransparency = 1
+    self.PagesContainer.Parent = self.MainFrame
+
+    self.Tabs = {}
+    self.Pages = {}
+
+    local isOpen = true
+    self.ToggleBtn.MouseButton1Click:Connect(function()
+        isOpen = not isOpen
+        self.MainFrame.Visible = isOpen
+    end)
+
+    local dragging, dragStart, startPos
+    self.TopBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = self.MainFrame.Position
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            self.MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    return self
+end
+
+function NitroLibrary:AddTab(order, name, emoji)
+    local tabBtn = Instance.new("TextButton")
+    tabBtn.Size = UDim2.new(1, 0, 0, 36)
+    tabBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    tabBtn.BackgroundTransparency = 0.6
+    tabBtn.Text = "   " .. (emoji or "") .. "  " .. name
+    tabBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    tabBtn.Font = Enum.Font.SourceSansBold
+    tabBtn.TextSize = 14
+    tabBtn.TextXAlignment = Enum.TextXAlignment.Left
+    tabBtn.LayoutOrder = order
+    tabBtn.Parent = self.Sidebar
+
+    local tbCorner = Instance.new("UICorner")
+    tbCorner.CornerRadius = UDim.new(0, 10)
+    tbCorner.Parent = tabBtn
+
+    local page = Instance.new("ScrollingFrame")
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.BackgroundTransparency = 1
+    page.BorderSizePixel = 0
+    page.CanvasSize = UDim2.new(0, 0, 0, 0)
+    page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    page.ScrollBarThickness = 3
+    page.Visible = false
+    page.Parent = self.PagesContainer
+
+    local pageLayout = Instance.new("UIListLayout")
+    pageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    pageLayout.Padding = UDim.new(0, 8)
+    pageLayout.Parent = page
+
+    table.insert(self.Pages, page)
+
+    tabBtn.MouseButton1Click:Connect(function()
+        for _, p in pairs(self.Pages) do p.Visible = false end
+        page.Visible = true
+    end)
+
+    if #self.Pages == 1 then
+        page.Visible = true
+    end
+
+    return page
+end
+function NitroLibrary:AddHomeDashboard(page)
+    local dashBox = Instance.new("Frame")
+    dashBox.Size = UDim2.new(1, -20, 0, 260)
+    dashBox.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    dashBox.BackgroundTransparency = 0.4
+    dashBox.BorderSizePixel = 0
+    dashBox.Parent = page
+
+    local dCorner = Instance.new("UICorner")
+    dCorner.CornerRadius = UDim.new(0, 14)
+    dCorner.Parent = dashBox
+
+    local avatarImg = Instance.new("ImageLabel")
+    avatarImg.Size = UDim2.new(0, 50, 0, 50)
+    avatarImg.Position = UDim2.new(0, 15, 0, 15)
+    avatarImg.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+    avatarImg.Image = Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+    avatarImg.Parent = dashBox
+
+    local avCorner = Instance.new("UICorner")
+    avCorner.CornerRadius = UDim.new(1, 0)
+    avCorner.Parent = avatarImg
+
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(1, -80, 0, 24)
+    nameLabel.Position = UDim2.new(0, 75, 0, 18)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Font = Enum.Font.SourceSansBold
+    nameLabel.Text = LocalPlayer.Name
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.TextSize = 16
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.Parent = dashBox
+
+    local subLabel = Instance.new("TextLabel")
+    subLabel.Size = UDim2.new(1, -80, 0, 20)
+    subLabel.Position = UDim2.new(0, 75, 0, 40)
+    subLabel.BackgroundTransparency = 1
+    subLabel.Font = Enum.Font.SourceSans
+    subLabel.Text = "@" .. LocalPlayer.DisplayName
+    subLabel.TextColor3 = Color3.fromRGB(170, 170, 180)
+    subLabel.TextSize = 13
+    subLabel.TextXAlignment = Enum.TextXAlignment.Left
+    subLabel.Parent = dashBox
+
+    local mapBox = Instance.new("Frame")
+    mapBox.Size = UDim2.new(1, -30, 0, 45)
+    mapBox.Position = UDim2.new(0, 15, 0, 75)
+    mapBox.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+    mapBox.BackgroundTransparency = 0.5
+    mapBox.BorderSizePixel = 0
+    mapBox.Parent = dashBox
+
+    local mbCorner = Instance.new("UICorner")
+    mbCorner.CornerRadius = UDim.new(0, 10)
+    mbCorner.Parent = mapBox
+
+    local mapTitle = Instance.new("TextLabel")
+    mapTitle.Size = UDim2.new(1, -20, 1, 0)
+    mapTitle.Position = UDim2.new(0, 10, 0, 0)
+    mapTitle.BackgroundTransparency = 1
+    mapTitle.Font = Enum.Font.SourceSansBold
+    mapTitle.Text = "MAP : " .. game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name
+    mapTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    mapTitle.TextSize = 13
+    mapTitle.TextXAlignment = Enum.TextXAlignment.Left
+    mapTitle.Parent = mapBox
+
+    local pSelectBtn = Instance.new("TextButton")
+    pSelectBtn.Size = UDim2.new(1, -30, 0, 45)
+    pSelectBtn.Position = UDim2.new(0, 15, 0, 130)
+    pSelectBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+    pSelectBtn.BackgroundTransparency = 0.5
+    pSelectBtn.Text = "   📶  เลือกผู้เล่นในเซิร์ฟเวอร์"
+    pSelectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    pSelectBtn.Font = Enum.Font.SourceSansBold
+    pSelectBtn.TextSize = 14
+    pSelectBtn.TextXAlignment = Enum.TextXAlignment.Left
+    pSelectBtn.Parent = dashBox
+
+    local psCorner = Instance.new("UICorner")
+    psCorner.CornerRadius = UDim.new(0, 10)
+    psCorner.Parent = pSelectBtn
+
+    pSelectBtn.MouseButton1Click:Connect(function()
+        local blurOverlay = Instance.new("TextButton")
+        blurOverlay.Size = UDim2.new(1, 0, 1, 0)
+        blurOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        blurOverlay.BackgroundTransparency = 0.6
+        blurOverlay.Text = ""
+        blurOverlay.Parent = self.ScreenGui
+
+        local popupBox = Instance.new("Frame")
+        popupBox.Size = UDim2.new(0, 280, 0, 300)
+        popupBox.Position = UDim2.new(0.5, -140, 0.5, -150)
+        popupBox.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+        popupBox.BackgroundTransparency = 0.2
+        popupBox.BorderSizePixel = 0
+        popupBox.Parent = blurOverlay
+
+        local pCorner = Instance.new("UICorner")
+        pCorner.CornerRadius = UDim.new(0, 16)
+        pCorner.Parent = popupBox
+
+        local titleLabel = Instance.new("TextLabel")
+        titleLabel.Size = UDim2.new(1, 0, 0, 45)
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Font = Enum.Font.SourceSansBold
+        titleLabel.Text = "📶  เลือกผู้เล่นในเซิร์ฟเวอร์"
+        titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        titleLabel.TextSize = 15
+        titleLabel.Parent = popupBox
+
+        local scrollOpt = Instance.new("ScrollingFrame")
+        scrollOpt.Size = UDim2.new(1, -20, 1, -110)
+        scrollOpt.Position = UDim2.new(0, 10, 0, 45)
+        scrollOpt.BackgroundTransparency = 1
+        scrollOpt.BorderSizePixel = 0
+        scrollOpt.CanvasSize = UDim2.new(0, 0, 0, 0)
+        scrollOpt.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        scrollOpt.ScrollBarThickness = 2
+        scrollOpt.Parent = popupBox
+
+        local sLayout = Instance.new("UIListLayout")
+        sLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        sLayout.Padding = UDim.new(0, 6)
+        sLayout.Parent = scrollOpt
+
+        for _, plr in ipairs(Players:GetPlayers()) do
+            local optBtn = Instance.new("TextButton")
+            optBtn.Size = UDim2.new(1, 0, 0, 38)
+            optBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+            optBtn.BackgroundTransparency = 0.4
+            optBtn.Text = "   👤  " .. plr.Name
+            optBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            optBtn.Font = Enum.Font.SourceSansSemibold
+            optBtn.TextSize = 14
+            optBtn.TextXAlignment = Enum.TextXAlignment.Left
+            optBtn.Parent = scrollOpt
+
+            local oCorner = Instance.new("UICorner")
+            oCorner.CornerRadius = UDim.new(0, 10)
+            oCorner.Parent = optBtn
+
+            optBtn.MouseButton1Click:Connect(function()
+                print("เลือกผู้เล่น: " .. plr.Name)
+                blurOverlay:Destroy()
+            end)
+        end
+
+        local closeFooter = Instance.new("TextButton")
+        closeFooter.Size = UDim2.new(1, -20, 0, 38)
+        closeFooter.Position = UDim2.new(0, 10, 1, -45)
+        closeFooter.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+        closeFooter.BackgroundTransparency = 0.3
+        closeFooter.Text = "ปิดหน้าต่าง"
+        closeFooter.TextColor3 = Color3.fromRGB(255, 95, 86)
+        closeFooter.Font = Enum.Font.SourceSansBold
+        closeFooter.TextSize = 14
+        closeFooter.Parent = popupBox
+
+        local fCorner = Instance.new("UICorner")
+        fCorner.CornerRadius = UDim.new(0, 10)
+        fCorner.Parent = closeFooter
+
+        closeFooter.MouseButton1Click:Connect(function()
+            blurOverlay:Destroy()
+        end)
+        blurOverlay.MouseButton1Click:Connect(function()
+            blurOverlay:Destroy()
+        end)
+    end)
+end
+
+function NitroLibrary:AddButton(page, text, emoji, callback)
+    local row = Instance.new("TextButton")
+    row.Size = UDim2.new(1, -20, 0, 50)
+    row.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    row.BackgroundTransparency = 0.4
+    row.Text = "   " .. (emoji or "") .. "  " .. text
+    row.TextColor3 = Color3.fromRGB(255, 255, 255)
+    row.Font = Enum.Font.SourceSansBold
+    row.TextSize = 15
+    row.TextXAlignment = Enum.TextXAlignment.Left
+    row.Parent = page
+
+    local rCorner = Instance.new("UICorner")
+    rCorner.CornerRadius = UDim.new(0, 12)
+    rCorner.Parent = row
+
+    local rStroke = Instance.new("UIStroke")
+    rStroke.Color = Color3.fromRGB(255, 255, 255)
+    rStroke.Transparency = 0.8
+    rStroke.Thickness = 1
+    rStroke.Parent = row
+
+    row.MouseButton1Click:Connect(function()
+        if callback then callback() end
+    end)
+end
+
+function NitroLibrary:AddTextbox(page, text, emoji, placeholder, callback)
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, -20, 0, 60)
+    row.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    row.BackgroundTransparency = 0.5
+    row.BorderSizePixel = 0
+    row.Parent = page
+
+    local rCorner = Instance.new("UICorner")
+    rCorner.CornerRadius = UDim.new(0, 14)
+    rCorner.Parent = row
+
+    local rStroke = Instance.new("UIStroke")
+    rStroke.Color = Color3.fromRGB(255, 255, 255)
+    rStroke.Transparency = 0.85
+    rStroke.Thickness = 1
+    rStroke.Parent = row
+
+    local rowLabel = Instance.new("TextLabel")
+    rowLabel.Size = UDim2.new(1, -30, 0, 20)
+    rowLabel.Position = UDim2.new(0, 15, 0, 8)
+    rowLabel.BackgroundTransparency = 1
+    rowLabel.Font = Enum.Font.SourceSansBold
+    rowLabel.Text = (emoji or "") .. "  " .. text
+    rowLabel.TextColor3 = Color3.fromRGB(200, 200, 210)
+    rowLabel.TextSize = 13
+    rowLabel.TextXAlignment = Enum.TextXAlignment.Left
+    rowLabel.Parent = row
+
+    local boxContainer = Instance.new("Frame")
+    boxContainer.Size = UDim2.new(1, -30, 0, 26)
+    boxContainer.Position = UDim2.new(0, 15, 0, 28)
+    boxContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    boxContainer.BackgroundTransparency = 0.4
+    boxContainer.BorderSizePixel = 0
+    boxContainer.Parent = row
+
+    local bcCorner = Instance.new("UICorner")
+    bcCorner.CornerRadius = UDim.new(0, 8)
+    bcCorner.Parent = boxContainer
+
+    local bcStroke = Instance.new("UIStroke")
+    bcStroke.Color = Color3.fromRGB(255, 255, 255)
+    bcStroke.Transparency = 0.9
+    bcStroke.Thickness = 1
+    bcStroke.Parent = boxContainer
+
+    local box = Instance.new("TextBox")
+    box.Size = UDim2.new(1, -12, 1, 0)
+    box.Position = UDim2.new(0, 6, 0, 0)
+    box.BackgroundTransparency = 1
+    box.PlaceholderText = placeholder or ""
+    box.Text = ""
+    box.TextColor3 = Color3.fromRGB(255, 255, 255)
+    box.PlaceholderColor3 = Color3.fromRGB(120, 120, 130)
+    box.Font = Enum.Font.SourceSans
+    box.TextSize = 14
+    box.TextXAlignment = Enum.TextXAlignment.Left
+    box.ClearTextOnFocus = false
+    box.Parent = boxContainer
+
+    box.Focused:Connect(function()
+        TweenService:Create(bcStroke, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
+            Transparency = 0.1,
+            Color = Color3.fromRGB(0, 122, 255)
+        }):Play()
+    end)
+
+    box.FocusLost:Connect(function(enterPressed)
+        TweenService:Create(bcStroke, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
+            Transparency = 0.9,
+            Color = Color3.fromRGB(255, 255, 255)
+        }):Play()
+        if callback then callback(box.Text, enterPressed) end
+    end)
+end
+
+function NitroLibrary:AddDropdown(page, text, emoji, options, callback)
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, -20, 0, 50)
+    row.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    row.BackgroundTransparency = 0.4
+    row.BorderSizePixel = 0
+    row.Parent = page
+
+    local rCorner = Instance.new("UICorner")
+    rCorner.CornerRadius = UDim.new(0, 12)
+    rCorner.Parent = row
+
+    local rStroke = Instance.new("UIStroke")
+    rStroke.Color = Color3.fromRGB(255, 255, 255)
+    rStroke.Transparency = 0.8
+    rStroke.Thickness = 1
+    rStroke.Parent = row
+
+    local rowLabel = Instance.new("TextLabel")
+    rowLabel.Size = UDim2.new(0.7, 0, 1, 0)
+    rowLabel.Position = UDim2.new(0, 15, 0, 0)
+    rowLabel.BackgroundTransparency = 1
+    rowLabel.Font = Enum.Font.SourceSansBold
+    rowLabel.Text = (emoji or "") .. "  " .. text
+    rowLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    rowLabel.TextSize = 15
+    rowLabel.TextXAlignment = Enum.TextXAlignment.Left
+    rowLabel.Parent = row
+
+    local arrowLabel = Instance.new("TextLabel")
+    arrowLabel.Size = UDim2.new(0, 30, 0, 50)
+    arrowLabel.Position = UDim2.new(1, -40, 0, 0)
+    arrowLabel.BackgroundTransparency = 1
+    arrowLabel.Font = Enum.Font.SourceSansBold
+    arrowLabel.Text = "›"
+    arrowLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    arrowLabel.TextSize = 20
+    arrowLabel.TextXAlignment = Enum.TextXAlignment.Center
+    arrowLabel.Parent = row
+
+    local dropBtn = Instance.new("TextButton")
+    dropBtn.Size = UDim2.new(1, 0, 1, 0)
+    dropBtn.BackgroundTransparency = 1
+    dropBtn.Text = ""
+    dropBtn.Parent = row
+
+    dropBtn.MouseButton1Click:Connect(function()
+        local blurOverlay = Instance.new("TextButton")
+        blurOverlay.Size = UDim2.new(1, 0, 1, 0)
+        blurOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        blurOverlay.BackgroundTransparency = 0.6
+        blurOverlay.Text = ""
+        blurOverlay.Parent = self.ScreenGui
+
+        local popupBox = Instance.new("Frame")
+        popupBox.Size = UDim2.new(0, 280, 0, 320)
+        popupBox.Position = UDim2.new(0.5, -140, 0.5, -160)
+        popupBox.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+        popupBox.BackgroundTransparency = 0.2
+        popupBox.BorderSizePixel = 0
+        popupBox.Parent = blurOverlay
+
+        local pCorner = Instance.new("UICorner")
+        pCorner.CornerRadius = UDim.new(0, 16)
+        pCorner.Parent = popupBox
+
+        local titleLabel = Instance.new("TextLabel")
+        titleLabel.Size = UDim2.new(1, 0, 0, 45)
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Font = Enum.Font.SourceSansBold
+        titleLabel.Text = (emoji or "") .. "  " .. text
+        titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        titleLabel.TextSize = 16
+        titleLabel.Parent = popupBox
+
+        local scrollOpt = Instance.new("ScrollingFrame")
+        scrollOpt.Size = UDim2.new(1, -20, 1, -110)
+        scrollOpt.Position = UDim2.new(0, 10, 0, 45)
+        scrollOpt.BackgroundTransparency = 1
+        scrollOpt.BorderSizePixel = 0
+        scrollOpt.CanvasSize = UDim2.new(0, 0, 0, 0)
+        scrollOpt.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        scrollOpt.ScrollBarThickness = 2
+        scrollOpt.Parent = popupBox
+
+        local sLayout = Instance.new("UIListLayout")
+        sLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        sLayout.Padding = UDim.new(0, 6)
+        sLayout.Parent = scrollOpt
+
+        for _, opt in ipairs(options) do
+            local optBtn = Instance.new("TextButton")
+            optBtn.Size = UDim2.new(1, 0, 0, 40)
+            optBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+            optBtn.BackgroundTransparency = 0.4
+            optBtn.Text = "  " .. tostring(opt)
+            optBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            optBtn.Font = Enum.Font.SourceSansSemibold
+            optBtn.TextSize = 14
+            optBtn.TextXAlignment = Enum.TextXAlignment.Left
+            optBtn.Parent = scrollOpt
+
+            local oCorner = Instance.new("UICorner")
+            oCorner.CornerRadius = UDim.new(0, 10)
+            oCorner.Parent = optBtn
+
+            optBtn.MouseButton1Click:Connect(function()
+                if callback then callback(opt) end
+                blurOverlay:Destroy()
+            end)
+        end
+
+        local closeFooter = Instance.new("TextButton")
+        closeFooter.Size = UDim2.new(1, -20, 0, 40)
+        closeFooter.Position = UDim2.new(0, 10, 1, -45)
+        closeFooter.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+        closeFooter.BackgroundTransparency = 0.3
+        closeFooter.Text = "ปิดหน้าต่าง"
+        closeFooter.TextColor3 = Color3.fromRGB(255, 95, 86)
+        closeFooter.Font = Enum.Font.SourceSansBold
+        closeFooter.TextSize = 14
+        closeFooter.Parent = popupBox
+
+        local fCorner = Instance.new("UICorner")
+        fCorner.CornerRadius = UDim.new(0, 10)
+        fCorner.Parent = closeFooter
+
+        closeFooter.MouseButton1Click:Connect(function()
+            blurOverlay:Destroy()
+        end)
+        blurOverlay.MouseButton1Click:Connect(function()
+            blurOverlay:Destroy()
+        end)
+    end)
+end
+
+function NitroLibrary:AddSlider(page, text, emoji, minVal, maxVal, defaultVal, callback)
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, -20, 0, 65)
+    row.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    row.BackgroundTransparency = 0.5
+    row.BorderSizePixel = 0
+    row.Parent = page
+
+    local rCorner = Instance.new("UICorner")
+    rCorner.CornerRadius = UDim.new(0, 14)
+    rCorner.Parent = row
+
+    local rStroke = Instance.new("UIStroke")
+    rStroke.Color = Color3.fromRGB(255, 255, 255)
+    rStroke.Transparency = 0.85
+    rStroke.Thickness = 1
+    rStroke.Parent = row
+
+    local rowLabel = Instance.new("TextLabel")
+    rowLabel.Size = UDim2.new(1, -70, 0, 22)
+    rowLabel.Position = UDim2.new(0, 15, 0, 8)
+    rowLabel.BackgroundTransparency = 1
+    rowLabel.Font = Enum.Font.SourceSansBold
+    rowLabel.Text = (emoji or "") .. "  " .. text
+    rowLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    rowLabel.TextSize = 14
+    rowLabel.TextXAlignment = Enum.TextXAlignment.Left
+    rowLabel.Parent = row
+
+    local valLabel = Instance.new("TextLabel")
+    valLabel.Size = UDim2.new(0, 50, 0, 22)
+    valLabel.Position = UDim2.new(1, -65, 0, 8)
+    valLabel.BackgroundTransparency = 1
+    valLabel.Font = Enum.Font.SourceSansBold
+    valLabel.Text = tostring(defaultVal)
+    valLabel.TextColor3 = Color3.fromRGB(0, 122, 255)
+    valLabel.TextSize = 14
+    valLabel.TextXAlignment = Enum.TextXAlignment.Right
+    valLabel.Parent = row
+
+    local sliderBg = Instance.new("Frame")
+    sliderBg.Size = UDim2.new(1, -30, 0, 6)
+    sliderBg.Position = UDim2.new(0, 15, 0, 42)
+    sliderBg.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    sliderBg.BorderSizePixel = 0
+    sliderBg.Parent = row
+
+    local sCorner = Instance.new("UICorner")
+    sCorner.CornerRadius = UDim.new(1, 0)
+    sCorner.Parent = sliderBg
+
+    local initScale = math.clamp((defaultVal - minVal) / (maxVal - minVal), 0, 1)
+
+    local sliderFill = Instance.new("Frame")
+    sliderFill.Size = UDim2.new(initScale, 0, 1, 0)
+    sliderFill.BackgroundColor3 = Color3.fromRGB(0, 122, 255)
+    sliderFill.BorderSizePixel = 0
+    sliderFill.Parent = sliderBg
+
+    local fCorner = Instance.new("UICorner")
+    fCorner.CornerRadius = UDim.new(1, 0)
+    fCorner.Parent = sliderFill
+
+    local thumb = Instance.new("Frame")
+    thumb.Size = UDim2.new(0, 20, 0, 20)
+    thumb.AnchorPoint = Vector2.new(0.5, 0.5)
+    thumb.Position = UDim2.new(initScale, 0, 0.5, 0)
+    thumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    thumb.BorderSizePixel = 0
+    thumb.Parent = sliderBg
+
+    local tCorner = Instance.new("UICorner")
+    tCorner.CornerRadius = UDim.new(1, 0)
+    tCorner.Parent = thumb
+
+    local dragging = false
+    local function updateSlide(input)
+        local pos = sliderBg.AbsolutePosition.X
+        local size = sliderBg.AbsoluteSize.X
+        local scale = math.clamp((input.Position.X - pos) / size, 0, 1)
+        
+        sliderFill.Size = UDim2.new(scale, 0, 1, 0)
+        thumb.Position = UDim2.new(scale, 0, 0.5, 0)
+        
+        local currentVal = math.floor(minVal + ((maxVal - minVal) * scale))
+        valLabel.Text = tostring(currentVal)
+        
+        if callback then callback(currentVal) end
+    end
+
+    sliderBg.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            TweenService:Create(thumb, TweenInfo.new(0.1), {Size = UDim2.new(0, 24, 0, 24)}):Play()
+            updateSlide(input)
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            updateSlide(input)
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            if dragging then
+                dragging = false
+                TweenService:Create(thumb, TweenInfo.new(0.1), {Size = UDim2.new(0, 20, 0, 20)}):Play()
+            end
+        end
+    end)
+end
+
+return NitroLibrary
