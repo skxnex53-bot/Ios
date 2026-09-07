@@ -375,7 +375,7 @@ function IOSLibrary:AddSlider(parentPage, title, min, max, default, callback)
 	sliderKnob.AnchorPoint = Vector2.new(0.5, 0.5)
 	sliderKnob.Position = UDim2.new(defaultPercent, 0, 0.5, 0)
 	sliderKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	sliderKnob.BackgroundTransparency = 0.25 -- มีความโปร่งใสแบบกระจก
+	sliderKnob.BackgroundTransparency = 1 -- มีความโปร่งใสแบบกระจก
 	sliderKnob.BorderSizePixel = 0
 	sliderKnob.Parent = sliderTrack
 
