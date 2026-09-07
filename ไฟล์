@@ -545,10 +545,14 @@ end
 -- ==========================================
 -- ฟังก์ชัน AddPlayerDropdown (ดึงรายชื่อผู้เล่นในเซิร์ฟเวอร์)
 -- ==========================================
-function IOSLibrary:AddPlayerDropdown(parentPage, title, callback)
-	local Players = game:GetService("Players")
+
+function IOSLibrary:AddDropdown(parentPage, title, options, callback)
 	local isOpen = false
-	local selectedPlayerName = "เลือกผู้เล่น"
+	local optionsList = options or {}
+	local selectedOption = optionsList[1] or "เลือกตัวเลือก"
+
+	-- หา ScreenGui หลักเพื่อไม่ให้โดน ClipsDescendants บัง UI
+	local screenGui = parentPage:FindFirstAncestorWhichIsA("ScreenGui") or parentPage
 
 	local dropBox = Instance.new("Frame")
 	dropBox.Size = UDim2.new(1, -20, 0, 45)
@@ -569,85 +573,85 @@ function IOSLibrary:AddPlayerDropdown(parentPage, title, callback)
 	dropGradient.Rotation = 45
 	dropGradient.Parent = dropBox
 
-	-- ปุ่มหลักที่กดเพื่อเปิด Dropdown
-	local playerSelectBtn = Instance.new("TextButton")
-	playerSelectBtn.Size = UDim2.new(1, 0, 1, 0)
-	playerSelectBtn.BackgroundTransparency = 1
-	playerSelectBtn.Text = ""
-	playerSelectBtn.ZIndex = 2
-	playerSelectBtn.Parent = dropBox
+	local selectBtn = Instance.new("TextButton")
+	selectBtn.Size = UDim2.new(1, 0, 1, 0)
+	selectBtn.BackgroundTransparency = 1
+	selectBtn.Text = ""
+	selectBtn.ZIndex = 5
+	selectBtn.Parent = dropBox
 
 	local psTitle = Instance.new("TextLabel")
 	psTitle.Size = UDim2.new(1, -12, 0, 14)
 	psTitle.Position = UDim2.new(0, 8, 0, 4)
 	psTitle.BackgroundTransparency = 1
 	psTitle.Font = Enum.Font.SourceSansBold
-	psTitle.Text = "👤 " .. string.upper(title)
+	psTitle.Text = "📌 " .. string.upper(title)
 	psTitle.TextColor3 = Color3.fromRGB(160, 160, 170)
 	psTitle.TextSize = 10
 	psTitle.TextXAlignment = Enum.TextXAlignment.Left
-	psTitle.ZIndex = 2
-	psTitle.Parent = playerSelectBtn
+	psTitle.ZIndex = 6
+	psTitle.Parent = selectBtn
 
 	local psValLabel = Instance.new("TextLabel")
 	psValLabel.Size = UDim2.new(1, -12, 0, 20)
 	psValLabel.Position = UDim2.new(0, 8, 0, 18)
 	psValLabel.BackgroundTransparency = 1
 	psValLabel.Font = Enum.Font.SourceSansBold
-	psValLabel.Text = selectedPlayerName .. "  ↕"
+	psValLabel.Text = tostring(selectedOption) .. "  ↕"
 	psValLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	psValLabel.TextSize = 13
 	psValLabel.TextXAlignment = Enum.TextXAlignment.Left
-	psValLabel.ZIndex = 2
-	psValLabel.Parent = playerSelectBtn
+	psValLabel.ZIndex = 6
+	psValLabel.Parent = selectBtn
 
-	-- Overlay สำหรับดักคลิกปิดเมื่อกดข้างนอก
+	-- Overlay ดักคลิกปิดเมื่อกดพื้นที่ว่าง
 	local overlay = Instance.new("TextButton")
 	overlay.Size = UDim2.new(1, 0, 1, 0)
 	overlay.BackgroundTransparency = 1
 	overlay.Text = ""
 	overlay.AutoButtonColor = false
 	overlay.Visible = false
-	overlay.ZIndex = 99
-	overlay.Parent = parentPage
+	overlay.ZIndex = 9998
+	overlay.Parent = screenGui
 
-	-- ==================== Dropdown แผงเลือกผู้เล่น ====================
-	local playerDropdownFlyout = Instance.new("Frame")
-	playerDropdownFlyout.Size = UDim2.new(0, 210, 0, 160)
-	playerDropdownFlyout.Position = UDim2.new(1, -215, 0, 48)
-	playerDropdownFlyout.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
-	playerDropdownFlyout.BackgroundTransparency = 0.05
-	playerDropdownFlyout.BorderSizePixel = 0
-	playerDropdownFlyout.Visible = false
-	playerDropdownFlyout.ZIndex = 100
-	playerDropdownFlyout.Parent = parentPage
+	-- ==================== Dropdown Flyout Panel ====================
+	local dropdownFlyout = Instance.new("Frame")
+	dropdownFlyout.Size = UDim2.new(0, 210, 0, 160)
+	dropdownFlyout.AnchorPoint = Vector2.new(0.5, 0.5)
+	dropdownFlyout.Position = UDim2.new(0.5, 0, 0.5, 0)
+	dropdownFlyout.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+	dropdownFlyout.BackgroundTransparency = 0.05
+	dropdownFlyout.BorderSizePixel = 0
+	dropdownFlyout.Visible = false
+	dropdownFlyout.ZIndex = 9999
+	dropdownFlyout.Parent = screenGui
 
 	local pdfCorner = Instance.new("UICorner")
 	pdfCorner.CornerRadius = UDim.new(0, 14)
-	pdfCorner.Parent = playerDropdownFlyout
+	pdfCorner.Parent = dropdownFlyout
 
 	local pdfStroke = Instance.new("UIStroke")
 	pdfStroke.Color = Color3.fromRGB(255, 255, 255)
 	pdfStroke.Transparency = 0.4
 	pdfStroke.Thickness = 1.2
-	pdfStroke.Parent = playerDropdownFlyout
+	pdfStroke.Parent = dropdownFlyout
 
 	local pdfHeader = Instance.new("Frame")
 	pdfHeader.Size = UDim2.new(1, 0, 0, 32)
 	pdfHeader.BackgroundTransparency = 1
-	pdfHeader.ZIndex = 101
-	pdfHeader.Parent = playerDropdownFlyout
+	pdfHeader.ZIndex = 10000
+	pdfHeader.Parent = dropdownFlyout
 
 	local pdfHeaderIcon = Instance.new("TextLabel")
-	pdfHeaderIcon.Size = UDim2.new(1, 0, 1, 0)
+	pdfHeaderIcon.Size = UDim2.new(1, -20, 1, 0)
 	pdfHeaderIcon.Position = UDim2.new(0, 10, 0, 0)
 	pdfHeaderIcon.BackgroundTransparency = 1
 	pdfHeaderIcon.Font = Enum.Font.SourceSansBold
-	pdfHeaderIcon.Text = "📶 เลือกผู้เล่นในเซิร์ฟเวอร์"
+	pdfHeaderIcon.Text = "📌 " .. title
 	pdfHeaderIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
 	pdfHeaderIcon.TextSize = 13
 	pdfHeaderIcon.TextXAlignment = Enum.TextXAlignment.Left
-	pdfHeaderIcon.ZIndex = 101
+	pdfHeaderIcon.ZIndex = 10000
 	pdfHeaderIcon.Parent = pdfHeader
 
 	local pdfDivider1 = Instance.new("Frame")
@@ -656,8 +660,8 @@ function IOSLibrary:AddPlayerDropdown(parentPage, title, callback)
 	pdfDivider1.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	pdfDivider1.BackgroundTransparency = 0.8
 	pdfDivider1.BorderSizePixel = 0
-	pdfDivider1.ZIndex = 101
-	pdfDivider1.Parent = playerDropdownFlyout
+	pdfDivider1.ZIndex = 10000
+	pdfDivider1.Parent = dropdownFlyout
 
 	local pdfScroll = Instance.new("ScrollingFrame")
 	pdfScroll.Size = UDim2.new(1, -8, 0, 85)
@@ -666,8 +670,8 @@ function IOSLibrary:AddPlayerDropdown(parentPage, title, callback)
 	pdfScroll.BorderSizePixel = 0
 	pdfScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 	pdfScroll.ScrollBarThickness = 3
-	pdfScroll.ZIndex = 101
-	pdfScroll.Parent = playerDropdownFlyout
+	pdfScroll.ZIndex = 10000
+	pdfScroll.Parent = dropdownFlyout
 
 	local pdfScrollLayout = Instance.new("UIListLayout")
 	pdfScrollLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -684,73 +688,72 @@ function IOSLibrary:AddPlayerDropdown(parentPage, title, callback)
 	pdfDivider2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	pdfDivider2.BackgroundTransparency = 0.8
 	pdfDivider2.BorderSizePixel = 0
-	pdfDivider2.ZIndex = 101
-	pdfDivider2.Parent = playerDropdownFlyout
+	pdfDivider2.ZIndex = 10000
+	pdfDivider2.Parent = dropdownFlyout
 
 	local pdfFooterBtn = Instance.new("TextButton")
 	pdfFooterBtn.Size = UDim2.new(1, 0, 0, 32)
 	pdfFooterBtn.Position = UDim2.new(0, 0, 0, 126)
 	pdfFooterBtn.BackgroundTransparency = 1
 	pdfFooterBtn.Font = Enum.Font.SourceSansBold
-	pdfFooterBtn.Text = "รีเฟรชรายชื่อผู้เล่น"
-	pdfFooterBtn.TextColor3 = Color3.fromRGB(100, 180, 255)
+	pdfFooterBtn.Text = "ปิดหน้าต่าง"
+	pdfFooterBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
 	pdfFooterBtn.TextSize = 12
-	pdfFooterBtn.ZIndex = 101
-	pdfFooterBtn.Parent = playerDropdownFlyout
+	pdfFooterBtn.ZIndex = 10000
+	pdfFooterBtn.Parent = dropdownFlyout
 
-	-- ฟังก์ชันสำหรับโหลดรายชื่อผู้เล่นใส่ใน ScrollFrame
-	local function populatePlayerList()
+	-- ฟังก์ชันสำหรับสร้างปุ่มรายการตาม array ที่ส่งมาจาก LocalScript
+	local function populateOptions()
 		for _, child in ipairs(pdfScroll:GetChildren()) do
 			if child:IsA("TextButton") then
 				child:Destroy()
 			end
 		end
 
-		for _, p in ipairs(Players:GetPlayers()) do
-			local pBtn = Instance.new("TextButton")
-			pBtn.Size = UDim2.new(1, -6, 0, 30)
-			pBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-			pBtn.BackgroundTransparency = 0.5
-			pBtn.AutoButtonColor = true
-			pBtn.Font = Enum.Font.SourceSans
-			pBtn.Text = "  " .. p.Name .. " (" .. p.DisplayName .. ")"
-			pBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-			pBtn.TextSize = 12
-			pBtn.TextXAlignment = Enum.TextXAlignment.Left
-			pBtn.ZIndex = 102
-			pBtn.Parent = pdfScroll
+		for _, opt in ipairs(optionsList) do
+			local btn = Instance.new("TextButton")
+			btn.Size = UDim2.new(1, -6, 0, 30)
+			btn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+			btn.BackgroundTransparency = 0.5
+			btn.AutoButtonColor = true
+			btn.Font = Enum.Font.SourceSansBold
+			btn.Text = "  " .. tostring(opt)
+			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			btn.TextSize = 12
+			btn.TextXAlignment = Enum.TextXAlignment.Left
+			btn.ZIndex = 10001
+			btn.Parent = pdfScroll
 
-			local pBtnCorner = Instance.new("UICorner")
-			pBtnCorner.CornerRadius = UDim.new(0, 6)
-			pBtnCorner.Parent = pBtn
+			local btnCorner = Instance.new("UICorner")
+			btnCorner.CornerRadius = UDim.new(0, 6)
+			btnCorner.Parent = btn
 
-			pBtn.MouseButton1Click:Connect(function()
-				selectedPlayerName = p.Name
-				psValLabel.Text = selectedPlayerName .. "  ↕"
+			btn.MouseButton1Click:Connect(function()
+				selectedOption = opt
+				psValLabel.Text = tostring(selectedOption) .. "  ↕"
 				isOpen = false
-				playerDropdownFlyout.Visible = false
+				dropdownFlyout.Visible = false
 				overlay.Visible = false
-				if callback then callback(p) end
+				if callback then callback(opt) end
 			end)
 		end
 	end
 
-	pdfFooterBtn.MouseButton1Click:Connect(function()
-		populatePlayerList()
-	end)
-
 	local function togglePopup()
 		isOpen = not isOpen
-		playerDropdownFlyout.Visible = isOpen
+		dropdownFlyout.Visible = isOpen
 		overlay.Visible = isOpen
 		if isOpen then
-			populatePlayerList()
+			populateOptions()
 		end
 	end
 
-	playerSelectBtn.MouseButton1Click:Connect(togglePopup)
+	selectBtn.MouseButton1Click:Connect(togglePopup)
 	overlay.MouseButton1Click:Connect(togglePopup)
+	pdfFooterBtn.MouseButton1Click:Connect(togglePopup)
 end
+
+			
 
 
 
