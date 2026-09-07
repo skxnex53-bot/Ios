@@ -645,5 +645,72 @@ function IOSLibrary:AddTextBox(parentPage, title, placeholder, callback)
 		if callback then callback(inputBox.Text, enterPressed) end
 	end)
 end
+-- โค้ดฟังก์ชันเดิมทั้งหมด (เช่น AddTextBox, AddSlider, AddWiFiDropdown ฯลฯ)
+-- ...
 
-return IOSLibrary
+-- เพิ่มฟังก์ชัน AddToggle ต่อท้ายลงไปตรงนี้
+function IOSLibrary:AddToggle(parentPage, title, defaultState, callback)
+	local state = defaultState or false
+
+	local toggleBox = Instance.new("Frame")
+	toggleBox.Size = UDim2.new(1, -20, 0, 45)
+	toggleBox.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+	toggleBox.BackgroundTransparency = 0.4
+	toggleBox.BorderSizePixel = 0
+	toggleBox.Parent = parentPage
+
+	local tbCorner = Instance.new("UICorner")
+	tbCorner.CornerRadius = UDim.new(0, 12)
+	tbCorner.Parent = toggleBox
+
+	local toggleTitle = Instance.new("TextLabel")
+	toggleTitle.Size = UDim2.new(1, -70, 1, 0)
+	toggleTitle.Position = UDim2.new(0, 15, 0, 0)
+	toggleTitle.BackgroundTransparency = 1
+	toggleTitle.Font = Enum.Font.SourceSansBold
+	toggleTitle.Text = title
+	toggleTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+	toggleTitle.TextSize = 14
+	toggleTitle.TextXAlignment = Enum.TextXAlignment.Left
+	toggleTitle.Parent = toggleBox
+
+	local switchBg = Instance.new("TextButton")
+	switchBg.Size = UDim2.new(0, 46, 0, 26)
+	switchBg.Position = UDim2.new(1, -61, 0.5, -13)
+	switchBg.BackgroundColor3 = state and Color3.fromRGB(52, 199, 89) or Color3.fromRGB(100, 100, 110)
+	switchBg.AutoButtonColor = false
+	switchBg.Text = ""
+	switchBg.Parent = toggleBox
+
+	local sbCorner = Instance.new("UICorner")
+	sbCorner.CornerRadius = UDim.new(1, 0)
+	sbCorner.Parent = switchBg
+
+	local switchKnob = Instance.new("Frame")
+	switchKnob.Size = UDim2.new(0, 22, 0, 22)
+	switchKnob.Position = state and UDim2.new(1, -24, 0.5, -11) or UDim2.new(0, 2, 0.5, -11)
+	switchKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	switchKnob.BorderSizePixel = 0
+	switchKnob.Parent = switchBg
+
+	local skCorner = Instance.new("UICorner")
+	skCorner.CornerRadius = UDim.new(1, 0)
+	skCorner.Parent = switchKnob
+
+	switchBg.MouseButton1Click:Connect(function()
+		state = not state
+		
+		if state then
+			switchBg.BackgroundColor3 = Color3.fromRGB(52, 199, 89)
+			switchKnob:TweenPosition(UDim2.new(1, -24, 0.5, -11), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.15, true)
+		else
+			switchBg.BackgroundColor3 = Color3.fromRGB(100, 100, 110)
+			switchKnob:TweenPosition(UDim2.new(0, 2, 0.5, -11), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.15, true)
+		end
+
+		if callback then callback(state) end
+	end)
+end
+
+return IOSLibrary -- บรรทัดส่งออกไลบรารีต้องอยู่ล่างสุดเสมอ
+
