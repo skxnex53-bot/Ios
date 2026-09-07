@@ -409,7 +409,6 @@ function IOSLibrary:AddSlider(parentPage, title, min, max, default, callback)
 		end
 	end)
 end
-
 function IOSLibrary:AddWiFiDropdown(parentPage, title, savedNetworks, nearbyNetworks, callback, settingsCallback)
 	local isOpen = false
 	local selectedNetwork = savedNetworks[1] or "ไม่ได้เชื่อมต่อ"
@@ -419,13 +418,13 @@ function IOSLibrary:AddWiFiDropdown(parentPage, title, savedNetworks, nearbyNetw
 	dropBox.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
 	dropBox.BackgroundTransparency = 0.4
 	dropBox.BorderSizePixel = 0
+	dropBox.ClipsDescendants = true
 	dropBox.Parent = parentPage
 
 	local dbCorner = Instance.new("UICorner")
 	dbCorner.CornerRadius = UDim.new(0, 12)
 	dbCorner.Parent = dropBox
 
-	-- เพิ่มเอฟเฟกต์กระจกเหลว (Glassmorphism Gradient) ให้กับตัว Dropdown หลัก
 	local dropGradient = Instance.new("UIGradient")
 	dropGradient.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 0.1),
@@ -435,7 +434,7 @@ function IOSLibrary:AddWiFiDropdown(parentPage, title, savedNetworks, nearbyNetw
 	dropGradient.Parent = dropBox
 
 	local dropTitle = Instance.new("TextButton")
-	dropTitle.Size = UDim2.new(1, 0, 1, 0)
+	dropTitle.Size = UDim2.new(1, 0, 0, 45)
 	dropTitle.BackgroundTransparency = 1
 	dropTitle.Font = Enum.Font.SourceSansBold
 	dropTitle.Text = "  📶  " .. title .. ": " .. selectedNetwork
@@ -445,7 +444,7 @@ function IOSLibrary:AddWiFiDropdown(parentPage, title, savedNetworks, nearbyNetw
 	dropTitle.Parent = dropBox
 
 	local arrowLabel = Instance.new("TextLabel")
-	arrowLabel.Size = UDim2.new(0, 30, 1, 0)
+	arrowLabel.Size = UDim2.new(0, 30, 0, 45)
 	arrowLabel.Position = UDim2.new(1, -35, 0, 0)
 	arrowLabel.BackgroundTransparency = 1
 	arrowLabel.Font = Enum.Font.SourceSansBold
@@ -454,73 +453,22 @@ function IOSLibrary:AddWiFiDropdown(parentPage, title, savedNetworks, nearbyNetw
 	arrowLabel.TextSize = 16
 	arrowLabel.Parent = dropBox
 
-	-- หน้าต่างป๊อปอัป Wi-Fi (แสดงผลทางด้านซ้าย)
-	local wifiPopup = Instance.new("Frame")
-	wifiPopup.Name = "WiFiPopupCard"
-	wifiPopup.Size = UDim2.new(0, 220, 0, 240)
-	wifiPopup.Position = UDim2.new(0, -230, 0, 0)
-	wifiPopup.BackgroundColor3 = Color3.fromRGB(32, 32, 40)
-	wifiPopup.BackgroundTransparency = 0.25
-	wifiPopup.BorderSizePixel = 0
-	wifiPopup.Visible = false
-	wifiPopup.ZIndex = 50
-	wifiPopup.ClipsDescendants = true
-	wifiPopup.Parent = dropBox
+	local container = Instance.new("ScrollingFrame")
+	container.Size = UDim2.new(1, 0, 1, -45)
+	container.Position = UDim2.new(0, 0, 0, 45)
+	container.BackgroundTransparency = 1
+	container.BorderSizePixel = 0
+	container.CanvasSize = UDim2.new(0, 0, 0, 0)
+	container.ScrollBarThickness = 2
+	container.Parent = dropBox
 
-	local wpCorner = Instance.new("UICorner")
-	wpCorner.CornerRadius = UDim.new(0, 16)
-	wpCorner.Parent = wifiPopup
+	local listLayout = Instance.new("UIListLayout")
+	listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	listLayout.Padding = UDim.new(0, 4)
+	listLayout.Parent = container
 
-	local wpGradient = Instance.new("UIGradient")
-	wpGradient.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.05),
-		NumberSequenceKeypoint.new(1, 0.3)
-	})
-	wpGradient.Rotation = 45
-	wpGradient.Parent = wifiPopup
-
-	local wpStroke = Instance.new("UIStroke")
-	wpStroke.Color = Color3.fromRGB(255, 255, 255)
-	wpStroke.Transparency = 0.4
-	wpStroke.Thickness = 1
-	wpStroke.Parent = wifiPopup
-
-	local popupHeader = Instance.new("TextLabel")
-	popupHeader.Size = UDim2.new(1, 0, 0, 35)
-	popupHeader.BackgroundTransparency = 1
-	popupHeader.Font = Enum.Font.SourceSansBold
-	popupHeader.Text = "📶  Wi-Fi"
-	popupHeader.TextColor3 = Color3.fromRGB(255, 255, 255)
-	popupHeader.TextSize = 15
-	popupHeader.ZIndex = 51
-	popupHeader.Parent = wifiPopup
-
-	local headerDiv = Instance.new("Frame")
-	headerDiv.Size = UDim2.new(1, 0, 0, 1)
-	headerDiv.Position = UDim2.new(0, 0, 0, 35)
-	headerDiv.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	headerDiv.BackgroundTransparency = 0.7
-	headerDiv.BorderSizePixel = 0
-	headerDiv.ZIndex = 51
-	headerDiv.Parent = wifiPopup
-
-	local wifiScroll = Instance.new("ScrollingFrame")
-	wifiScroll.Size = UDim2.new(1, 0, 1, -80)
-	wifiScroll.Position = UDim2.new(0, 0, 0, 36)
-	wifiScroll.BackgroundTransparency = 1
-	wifiScroll.BorderSizePixel = 0
-	wifiScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-	wifiScroll.ScrollBarThickness = 2
-	wifiScroll.ZIndex = 51
-	wifiScroll.Parent = wifiPopup
-
-	local scrollLayout = Instance.new("UIListLayout")
-	scrollLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	scrollLayout.Padding = UDim.new(0, 4)
-	scrollLayout.Parent = wifiScroll
-
-	scrollLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-		wifiScroll.CanvasSize = UDim2.new(0, 0, 0, scrollLayout.AbsoluteContentSize.Y + 10)
+	listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		container.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 15)
 	end)
 
 	local function addSectionLabel(text)
@@ -532,8 +480,7 @@ function IOSLibrary:AddWiFiDropdown(parentPage, title, savedNetworks, nearbyNetw
 		lbl.TextColor3 = Color3.fromRGB(160, 160, 160)
 		lbl.TextSize = 12
 		lbl.TextXAlignment = Enum.TextXAlignment.Left
-		lbl.ZIndex = 52
-		lbl.Parent = wifiScroll
+		lbl.Parent = container
 	end
 
 	local function addNetworkItem(netName, statusText)
@@ -541,8 +488,7 @@ function IOSLibrary:AddWiFiDropdown(parentPage, title, savedNetworks, nearbyNetw
 		btn.Size = UDim2.new(1, 0, 0, 38)
 		btn.BackgroundTransparency = 1
 		btn.BorderSizePixel = 0
-		btn.ZIndex = 52
-		btn.Parent = wifiScroll
+		btn.Parent = container
 
 		local nLabel = Instance.new("TextLabel")
 		nLabel.Size = UDim2.new(1, -15, 0, 18)
@@ -553,7 +499,6 @@ function IOSLibrary:AddWiFiDropdown(parentPage, title, savedNetworks, nearbyNetw
 		nLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		nLabel.TextSize = 13
 		nLabel.TextXAlignment = Enum.TextXAlignment.Left
-		nLabel.ZIndex = 53
 		nLabel.Parent = btn
 
 		local sLabel = Instance.new("TextLabel")
@@ -565,14 +510,13 @@ function IOSLibrary:AddWiFiDropdown(parentPage, title, savedNetworks, nearbyNetw
 		sLabel.TextColor3 = Color3.fromRGB(170, 170, 170)
 		sLabel.TextSize = 11
 		sLabel.TextXAlignment = Enum.TextXAlignment.Left
-		sLabel.ZIndex = 53
 		sLabel.Parent = btn
 
 		btn.MouseButton1Click:Connect(function()
 			selectedNetwork = netName
 			dropTitle.Text = "  📶  " .. title .. ": " .. selectedNetwork
 			isOpen = false
-			wifiPopup.Visible = false
+			TweenService:Create(dropBox, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {Size = UDim2.new(1, -20, 0, 45)}):Play()
 			arrowLabel.Text = "▾"
 			if callback then callback(netName) end
 		end)
@@ -594,25 +538,24 @@ function IOSLibrary:AddWiFiDropdown(parentPage, title, savedNetworks, nearbyNetw
 
 	local settingsBtn = Instance.new("TextButton")
 	settingsBtn.Size = UDim2.new(1, 0, 0, 44)
-	settingsBtn.Position = UDim2.new(0, 0, 1, -44)
 	settingsBtn.BackgroundTransparency = 1
 	settingsBtn.Font = Enum.Font.SourceSansBold
 	settingsBtn.Text = "การตั้งค่า Wi-Fi เพิ่มเติม"
 	settingsBtn.TextColor3 = Color3.fromRGB(100, 180, 255)
 	settingsBtn.TextSize = 13
-	settingsBtn.ZIndex = 51
-	settingsBtn.Parent = wifiPopup
+	settingsBtn.Parent = container
 
 	settingsBtn.MouseButton1Click:Connect(function()
 		isOpen = false
-		wifiPopup.Visible = false
+		TweenService:Create(dropBox, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {Size = UDim2.new(1, -20, 0, 45)}):Play()
 		arrowLabel.Text = "▾"
 		if settingsCallback then settingsCallback() end
 	end)
 
 	dropTitle.MouseButton1Click:Connect(function()
 		isOpen = not isOpen
-		wifiPopup.Visible = isOpen
+		local targetHeight = isOpen and math.clamp(45 + listLayout.AbsoluteContentSize.Y + 15, 60, 240) or 45
+		TweenService:Create(dropBox, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, -20, 0, targetHeight)}):Play()
 		arrowLabel.Text = isOpen and "▴" or "▾"
 	end)
 end
