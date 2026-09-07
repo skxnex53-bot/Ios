@@ -425,6 +425,15 @@ function IOSLibrary:AddWiFiDropdown(parentPage, title, savedNetworks, nearbyNetw
 	dbCorner.CornerRadius = UDim.new(0, 12)
 	dbCorner.Parent = dropBox
 
+	-- เพิ่มเอฟเฟกต์กระจกเหลว (Glassmorphism Gradient) ให้กับตัว Dropdown หลัก
+	local dropGradient = Instance.new("UIGradient")
+	dropGradient.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.1),
+		NumberSequenceKeypoint.new(1, 0.4)
+	})
+	dropGradient.Rotation = 45
+	dropGradient.Parent = dropBox
+
 	local dropTitle = Instance.new("TextButton")
 	dropTitle.Size = UDim2.new(1, 0, 1, 0)
 	dropTitle.BackgroundTransparency = 1
@@ -445,12 +454,13 @@ function IOSLibrary:AddWiFiDropdown(parentPage, title, savedNetworks, nearbyNetw
 	arrowLabel.TextSize = 16
 	arrowLabel.Parent = dropBox
 
+	-- หน้าต่างป๊อปอัป Wi-Fi (แสดงผลทางด้านซ้าย)
 	local wifiPopup = Instance.new("Frame")
 	wifiPopup.Name = "WiFiPopupCard"
 	wifiPopup.Size = UDim2.new(0, 220, 0, 240)
-	wifiPopup.Position = UDim2.new(1, 10, 0, 0)
+	wifiPopup.Position = UDim2.new(0, -230, 0, 0)
 	wifiPopup.BackgroundColor3 = Color3.fromRGB(32, 32, 40)
-	wifiPopup.BackgroundTransparency = 0.1
+	wifiPopup.BackgroundTransparency = 0.25
 	wifiPopup.BorderSizePixel = 0
 	wifiPopup.Visible = false
 	wifiPopup.ZIndex = 50
@@ -461,9 +471,17 @@ function IOSLibrary:AddWiFiDropdown(parentPage, title, savedNetworks, nearbyNetw
 	wpCorner.CornerRadius = UDim.new(0, 16)
 	wpCorner.Parent = wifiPopup
 
+	local wpGradient = Instance.new("UIGradient")
+	wpGradient.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.05),
+		NumberSequenceKeypoint.new(1, 0.3)
+	})
+	wpGradient.Rotation = 45
+	wpGradient.Parent = wifiPopup
+
 	local wpStroke = Instance.new("UIStroke")
 	wpStroke.Color = Color3.fromRGB(255, 255, 255)
-	wpStroke.Transparency = 0.5
+	wpStroke.Transparency = 0.4
 	wpStroke.Thickness = 1
 	wpStroke.Parent = wifiPopup
 
