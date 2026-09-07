@@ -545,19 +545,24 @@ end
 -- ==========================================
 -- ฟังก์ชัน AddPlayerDropdown (ดึงรายชื่อผู้เล่นในเซิร์ฟเวอร์)
 -- ==========================================
+local TweenService = game:GetService("TweenService")
 
+-- ==========================================
+-- ฟังก์ชัน AddDropdown (สไตล์ Liquid Glass + Animation)
+-- ==========================================
 function IOSLibrary:AddDropdown(parentPage, title, options, callback)
 	local isOpen = false
 	local optionsList = options or {}
 	local selectedOption = optionsList[1] or "เลือกตัวเลือก"
 
-	-- หา ScreenGui หลักเพื่อไม่ให้โดน ClipsDescendants บัง UI
+	-- หา ScreenGui หลักเพื่อลอย Popup เหนือทุกชั้น
 	local screenGui = parentPage:FindFirstAncestorWhichIsA("ScreenGui") or parentPage
 
+	-- ปุ่มเลือกหลักในหน้าต่าง
 	local dropBox = Instance.new("Frame")
 	dropBox.Size = UDim2.new(1, -20, 0, 45)
-	dropBox.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-	dropBox.BackgroundTransparency = 0.4
+	dropBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	dropBox.BackgroundTransparency = 0.88 -- พื้นหลังใสบางเบา
 	dropBox.BorderSizePixel = 0
 	dropBox.Parent = parentPage
 
@@ -565,10 +570,16 @@ function IOSLibrary:AddDropdown(parentPage, title, options, callback)
 	dbCorner.CornerRadius = UDim.new(0, 12)
 	dbCorner.Parent = dropBox
 
+	local dbStroke = Instance.new("UIStroke")
+	dbStroke.Color = Color3.fromRGB(255, 255, 255)
+	dbStroke.Transparency = 0.75 -- ขอบกระจกใส
+	dbStroke.Thickness = 0.8 -- ขอบบางเฉียบ
+	dbStroke.Parent = dropBox
+
 	local dropGradient = Instance.new("UIGradient")
 	dropGradient.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.1),
-		NumberSequenceKeypoint.new(1, 0.4)
+		NumberSequenceKeypoint.new(0, 0.2),
+		NumberSequenceKeypoint.new(1, 0.6)
 	})
 	dropGradient.Rotation = 45
 	dropGradient.Parent = dropBox
@@ -586,7 +597,7 @@ function IOSLibrary:AddDropdown(parentPage, title, options, callback)
 	psTitle.BackgroundTransparency = 1
 	psTitle.Font = Enum.Font.SourceSansBold
 	psTitle.Text = "📌 " .. string.upper(title)
-	psTitle.TextColor3 = Color3.fromRGB(160, 160, 170)
+	psTitle.TextColor3 = Color3.fromRGB(180, 180, 190)
 	psTitle.TextSize = 10
 	psTitle.TextXAlignment = Enum.TextXAlignment.Left
 	psTitle.ZIndex = 6
@@ -614,27 +625,43 @@ function IOSLibrary:AddDropdown(parentPage, title, options, callback)
 	overlay.ZIndex = 9998
 	overlay.Parent = screenGui
 
-	-- ==================== Dropdown Flyout Panel ====================
-	local dropdownFlyout = Instance.new("Frame")
-	dropdownFlyout.Size = UDim2.new(0, 210, 0, 160)
+	-- ==================== Dropdown Flyout Panel (Liquid Glass) ====================
+	local dropdownFlyout = Instance.new("CanvasGroup") -- รองรับ Fade / GroupTransparency
+	dropdownFlyout.Size = UDim2.new(0, 180, 0, 130)
 	dropdownFlyout.AnchorPoint = Vector2.new(0.5, 0.5)
-	dropdownFlyout.Position = UDim2.new(0.5, 0, 0.5, 0)
-	dropdownFlyout.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
-	dropdownFlyout.BackgroundTransparency = 0.05
+	dropdownFlyout.Position = UDim2.new(0.5, 0, 0.48, 0)
+	dropdownFlyout.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+	dropdownFlyout.BackgroundTransparency = 0.35 -- กระจกใสโปร่งแสง
+	dropdownFlyout.GroupTransparency = 1
 	dropdownFlyout.BorderSizePixel = 0
 	dropdownFlyout.Visible = false
 	dropdownFlyout.ZIndex = 9999
 	dropdownFlyout.Parent = screenGui
 
 	local pdfCorner = Instance.new("UICorner")
-	pdfCorner.CornerRadius = UDim.new(0, 14)
+	pdfCorner.CornerRadius = UDim.new(0, 16)
 	pdfCorner.Parent = dropdownFlyout
 
+	-- ขอบกระจกบางเฉียบ
 	local pdfStroke = Instance.new("UIStroke")
 	pdfStroke.Color = Color3.fromRGB(255, 255, 255)
-	pdfStroke.Transparency = 0.4
-	pdfStroke.Thickness = 1.2
+	pdfStroke.Transparency = 0.65
+	pdfStroke.Thickness = 0.8
 	pdfStroke.Parent = dropdownFlyout
+
+	-- เอฟเฟกต์สะท้อนแสงกระจกเหลว (Liquid Gloss Effect)
+	local glassGradient = Instance.new("UIGradient")
+	glassGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 130, 160))
+	})
+	glassGradient.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.15),
+		NumberSequenceKeypoint.new(0.5, 0.4),
+		NumberSequenceKeypoint.new(1, 0.7)
+	})
+	glassGradient.Rotation = 65
+	glassGradient.Parent = dropdownFlyout
 
 	local pdfHeader = Instance.new("Frame")
 	pdfHeader.Size = UDim2.new(1, 0, 0, 32)
@@ -644,7 +671,7 @@ function IOSLibrary:AddDropdown(parentPage, title, options, callback)
 
 	local pdfHeaderIcon = Instance.new("TextLabel")
 	pdfHeaderIcon.Size = UDim2.new(1, -20, 1, 0)
-	pdfHeaderIcon.Position = UDim2.new(0, 10, 0, 0)
+	pdfHeaderIcon.Position = UDim2.new(0, 12, 0, 0)
 	pdfHeaderIcon.BackgroundTransparency = 1
 	pdfHeaderIcon.Font = Enum.Font.SourceSansBold
 	pdfHeaderIcon.Text = "📌 " .. title
@@ -655,10 +682,10 @@ function IOSLibrary:AddDropdown(parentPage, title, options, callback)
 	pdfHeaderIcon.Parent = pdfHeader
 
 	local pdfDivider1 = Instance.new("Frame")
-	pdfDivider1.Size = UDim2.new(1, -16, 0, 1)
-	pdfDivider1.Position = UDim2.new(0, 8, 0, 32)
+	pdfDivider1.Size = UDim2.new(1, -20, 0, 1)
+	pdfDivider1.Position = UDim2.new(0, 10, 0, 32)
 	pdfDivider1.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	pdfDivider1.BackgroundTransparency = 0.8
+	pdfDivider1.BackgroundTransparency = 0.85
 	pdfDivider1.BorderSizePixel = 0
 	pdfDivider1.ZIndex = 10000
 	pdfDivider1.Parent = dropdownFlyout
@@ -669,7 +696,7 @@ function IOSLibrary:AddDropdown(parentPage, title, options, callback)
 	pdfScroll.BackgroundTransparency = 1
 	pdfScroll.BorderSizePixel = 0
 	pdfScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-	pdfScroll.ScrollBarThickness = 3
+	pdfScroll.ScrollBarThickness = 2
 	pdfScroll.ZIndex = 10000
 	pdfScroll.Parent = dropdownFlyout
 
@@ -683,10 +710,10 @@ function IOSLibrary:AddDropdown(parentPage, title, options, callback)
 	end)
 
 	local pdfDivider2 = Instance.new("Frame")
-	pdfDivider2.Size = UDim2.new(1, -16, 0, 1)
-	pdfDivider2.Position = UDim2.new(0, 8, 0, 124)
+	pdfDivider2.Size = UDim2.new(1, -20, 0, 1)
+	pdfDivider2.Position = UDim2.new(0, 10, 0, 124)
 	pdfDivider2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	pdfDivider2.BackgroundTransparency = 0.8
+	pdfDivider2.BackgroundTransparency = 0.85
 	pdfDivider2.BorderSizePixel = 0
 	pdfDivider2.ZIndex = 10000
 	pdfDivider2.Parent = dropdownFlyout
@@ -697,12 +724,12 @@ function IOSLibrary:AddDropdown(parentPage, title, options, callback)
 	pdfFooterBtn.BackgroundTransparency = 1
 	pdfFooterBtn.Font = Enum.Font.SourceSansBold
 	pdfFooterBtn.Text = "ปิดหน้าต่าง"
-	pdfFooterBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+	pdfFooterBtn.TextColor3 = Color3.fromRGB(255, 120, 120)
 	pdfFooterBtn.TextSize = 12
 	pdfFooterBtn.ZIndex = 10000
 	pdfFooterBtn.Parent = dropdownFlyout
 
-	-- ฟังก์ชันสำหรับสร้างปุ่มรายการตาม array ที่ส่งมาจาก LocalScript
+	-- ฟังก์ชันสำหรับสร้างรายการปุ่มตัวเลือก
 	local function populateOptions()
 		for _, child in ipairs(pdfScroll:GetChildren()) do
 			if child:IsA("TextButton") then
@@ -713,48 +740,84 @@ function IOSLibrary:AddDropdown(parentPage, title, options, callback)
 		for _, opt in ipairs(optionsList) do
 			local btn = Instance.new("TextButton")
 			btn.Size = UDim2.new(1, -6, 0, 30)
-			btn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-			btn.BackgroundTransparency = 0.5
+			btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+			btn.BackgroundTransparency = 0.90 -- ใสเนียนกับแผงหลัก
 			btn.AutoButtonColor = true
 			btn.Font = Enum.Font.SourceSansBold
 			btn.Text = "  " .. tostring(opt)
-			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			btn.TextColor3 = Color3.fromRGB(240, 240, 255)
 			btn.TextSize = 12
 			btn.TextXAlignment = Enum.TextXAlignment.Left
 			btn.ZIndex = 10001
 			btn.Parent = pdfScroll
 
 			local btnCorner = Instance.new("UICorner")
-			btnCorner.CornerRadius = UDim.new(0, 6)
+			btnCorner.CornerRadius = UDim.new(0, 8)
 			btnCorner.Parent = btn
+
+			local btnStroke = Instance.new("UIStroke")
+			btnStroke.Color = Color3.fromRGB(255, 255, 255)
+			btnStroke.Transparency = 0.85
+			btnStroke.Thickness = 0.8
+			btnStroke.Parent = btn
 
 			btn.MouseButton1Click:Connect(function()
 				selectedOption = opt
 				psValLabel.Text = tostring(selectedOption) .. "  ↕"
-				isOpen = false
-				dropdownFlyout.Visible = false
-				overlay.Visible = false
+				togglePopup(false)
 				if callback then callback(opt) end
 			end)
 		end
 	end
 
-	local function togglePopup()
-		isOpen = not isOpen
-		dropdownFlyout.Visible = isOpen
-		overlay.Visible = isOpen
+	-- ==================== ระบบอนิเมชั่น Liquid Bounce ====================
+	local tweenInfoIn = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	local tweenInfoOut = TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+
+	function togglePopup(state)
+		if state == nil then
+			isOpen = not isOpen
+		else
+			isOpen = state
+		end
+
 		if isOpen then
 			populateOptions()
+			dropdownFlyout.Visible = true
+			overlay.Visible = true
+
+			-- จุดเริ่มต้นก่อนเล่นอนิเมชั่น (ย่อ + ลอยเล็กน้อย)
+			dropdownFlyout.Size = UDim2.new(0, 180, 0, 130)
+			dropdownFlyout.Position = UDim2.new(0.5, 0, 0.48, 0)
+			dropdownFlyout.GroupTransparency = 1
+
+			-- เล่นอนิเมชั่นขยายเด้งแบบนุ่มนวล
+			TweenService:Create(dropdownFlyout, tweenInfoIn, {
+				Size = UDim2.new(0, 220, 0, 165),
+				Position = UDim2.new(0.5, 0, 0.5, 0),
+				GroupTransparency = 0
+			}):Play()
+		else
+			-- เล่นอนิเมชั่นยุบหายอย่างลื่นไหล
+			local tweenClose = TweenService:Create(dropdownFlyout, tweenInfoOut, {
+				Size = UDim2.new(0, 180, 0, 130),
+				Position = UDim2.new(0.5, 0, 0.48, 0),
+				GroupTransparency = 1
+			})
+			tweenClose:Play()
+			tweenClose.Completed:Connect(function()
+				if not isOpen then
+					dropdownFlyout.Visible = false
+					overlay.Visible = false
+				end
+			end)
 		end
 	end
 
-	selectBtn.MouseButton1Click:Connect(togglePopup)
-	overlay.MouseButton1Click:Connect(togglePopup)
-	pdfFooterBtn.MouseButton1Click:Connect(togglePopup)
+	selectBtn.MouseButton1Click:Connect(function() togglePopup() end)
+	overlay.MouseButton1Click:Connect(function() togglePopup(false) end)
+	pdfFooterBtn.MouseButton1Click:Connect(function() togglePopup(false) end)
 end
-
-			
-
 
 
 return IOSLibrary
