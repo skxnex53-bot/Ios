@@ -305,6 +305,9 @@ end
 
 -- สไลด์
 
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
 function IOSLibrary:AddSlider(parentPage, title, min, max, default, callback)
 	local sliderBox = Instance.new("Frame")
 	sliderBox.Size = UDim2.new(1, -20, 0, 65)
@@ -362,11 +365,17 @@ function IOSLibrary:AddSlider(parentPage, title, min, max, default, callback)
 	sfCorner.CornerRadius = UDim.new(1, 0)
 	sfCorner.Parent = sliderFill
 
+	--------------------------------------------------------------------
+	-- [1. ตกแต่งก้อนกลมสไตล์กระจกเหลว (Liquid Glass Knob)]
+	--------------------------------------------------------------------
+	local baseKnobSize = Vector2.new(18, 18)
+
 	local sliderKnob = Instance.new("Frame")
-	sliderKnob.Size = UDim2.new(0, 18, 0, 18)
+	sliderKnob.Size = UDim2.new(0, baseKnobSize.X, 0, baseKnobSize.Y)
 	sliderKnob.AnchorPoint = Vector2.new(0.5, 0.5)
 	sliderKnob.Position = UDim2.new(defaultPercent, 0, 0.5, 0)
 	sliderKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	sliderKnob.BackgroundTransparency = 0.25 -- มีความโปร่งใสแบบกระจก
 	sliderKnob.BorderSizePixel = 0
 	sliderKnob.Parent = sliderTrack
 
@@ -374,7 +383,49 @@ function IOSLibrary:AddSlider(parentPage, title, min, max, default, callback)
 	skCorner.CornerRadius = UDim.new(1, 0)
 	skCorner.Parent = sliderKnob
 
+	-- เส้นขอบเรืองแสงสะท้อนของกระจก (Glass Border Stroke)
+	local skStroke = Instance.new("UIStroke")
+	skStroke.Thickness = 1.5
+	skStroke.Color = Color3.fromRGB(255, 255, 255)
+	skStroke.Transparency = 0.2
+	skStroke.Parent = sliderKnob
+
+	-- แสงสะท้อนเฉียงของกระจก (Glass Highlight Reflection)
+	local skGradient = Instance.new("UIGradient")
+	skGradient.Rotation = 45
+	skGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 230, 255))
+	})
+	skGradient.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.1),
+		NumberSequenceKeypoint.new(0.5, 0.35),
+		NumberSequenceKeypoint.new(1, 0.15)
+	})
+	skGradient.Parent = sliderKnob
+
+	--------------------------------------------------------------------
+	-- [2. อนิเมชั่นกระจกเหลว ยืด/เด้งดึ๋ง (Squash & Stretch Physics)]
+	--------------------------------------------------------------------
 	local selfRef = self
+	local lastX = nil
+	local resetThread = nil
+
+	-- ตั้งค่าลักษณะความนุ่มนวลของสปริงตอนเด้งกลับ
+	local stretchTweenInfo = TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local bounceTweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out)
+
+	-- ฟังก์ชันคืนค่าขนาดเดิมแบบเด้งดึ๋ง (Elastic Bounce Back)
+	local function resetKnobSize()
+		if resetThread then
+			task.cancel(resetThread)
+			resetThread = nil
+		end
+		lastX = nil
+		TweenService:Create(sliderKnob, bounceTweenInfo, {
+			Size = UDim2.new(0, baseKnobSize.X, 0, baseKnobSize.Y)
+		}):Play()
+	end
 
 	local function updateSlider(input)
 		local pos = sliderTrack.AbsolutePosition.X
@@ -385,6 +436,23 @@ function IOSLibrary:AddSlider(parentPage, title, min, max, default, callback)
 		sliderFill.Size = UDim2.new(percent, 0, 1, 0)
 		sliderKnob.Position = UDim2.new(percent, 0, 0.5, 0)
 		sliderValText.Text = math.floor(value) .. "%"
+
+		-- คำนวณความเร็วการลาก (Delta X) เพื่อยืดกระจกเป็นวงรีตามแรงเหวี่ยง
+		local currentX = input.Position.X
+		if lastX then
+			local deltaX = math.abs(currentX - lastX)
+			local stretchX = math.clamp(baseKnobSize.X + (deltaX * 0.7), baseKnobSize.X, 28)
+			local compressY = math.clamp(baseKnobSize.Y - (deltaX * 0.35), 10, baseKnobSize.Y)
+
+			TweenService:Create(sliderKnob, stretchTweenInfo, {
+				Size = UDim2.new(0, stretchX, 0, compressY)
+			}):Play()
+		end
+		lastX = currentX
+
+		-- หากหยุดนิ่งชั่วขณะระหว่างลาก ให้กระจกเด้งกลับทรงเดิม
+		if resetThread then task.cancel(resetThread) end
+		resetThread = task.delay(0.05, resetKnobSize)
 
 		if callback then callback(value) end
 	end
@@ -402,6 +470,7 @@ function IOSLibrary:AddSlider(parentPage, title, min, max, default, callback)
 			if selfRef.isSliding then
 				selfRef.isSliding = false
 				selfRef:_setGuiInteractionActive(false)
+				resetKnobSize() -- ปล่อยมือแล้วเด้งกลับเป็นวงกลม
 			end
 		end
 	end)
@@ -412,6 +481,7 @@ function IOSLibrary:AddSlider(parentPage, title, min, max, default, callback)
 		end
 	end)
 end
+
 	
 -- กล่องข้อความ
 
