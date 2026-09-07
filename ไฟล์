@@ -1,0 +1,649 @@
+--[[
+    Library Name: IOS Dashboard Library
+    Description: ระบบ UI สไตล์ iOS Dashboard (ครบถ้วนทุกฟังก์ชัน)
+]]
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local IOSLibrary = {}
+IOSLibrary.__index = IOSLibrary
+
+function IOSLibrary.new(titleText)
+	local self = setmetatable({}, IOSLibrary)
+	
+	self.dragging = false
+	self.dragInput = nil
+	self.dragStart = nil
+	self.startPos = nil
+	self.isSliding = false
+	self.isOpen = false
+	
+	self.allMenuButtons = {}
+	self.allPages = {}
+
+	self.CAMERA_ACTION_NAME = "DisableCameraMovementDuringGUI_" .. math.random(1000, 9999)
+	
+	self.screenGui = Instance.new("ScreenGui")
+	self.screenGui.Name = "IOSDashboardGui"
+	self.screenGui.ResetOnSpawn = false
+	self.screenGui.Parent = playerGui
+
+	self.mainFrame = Instance.new("Frame")
+	self.mainFrame.Name = "MainFrame"
+	self.mainFrame.Size = UDim2.new(0, 520, 0, 320)
+	self.mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+	self.mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+	self.mainFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 35)
+	self.mainFrame.BackgroundTransparency = 0.2
+	self.mainFrame.BorderSizePixel = 0
+	self.mainFrame.ClipsDescendants = false
+	self.mainFrame.Visible = false
+	self.mainFrame.Parent = self.screenGui
+
+	local mainCorner = Instance.new("UICorner")
+	mainCorner.CornerRadius = UDim.new(0, 20)
+	mainCorner.Parent = self.mainFrame
+
+	local mainStroke = Instance.new("UIStroke")
+	mainStroke.Color = Color3.fromRGB(255, 255, 255)
+	mainStroke.Transparency = 0.6
+	mainStroke.Thickness = 1.2
+	mainStroke.Parent = self.mainFrame
+
+	self:_initDragging()
+	self:_initGlassEffect()
+	self:_initHeader(titleText)
+	self:_initSidebarAndContent()
+
+	return self
+end
+
+function IOSLibrary:_blockCamera(actionName, inputState, inputObject)
+	return Enum.ContextActionResult.Sink
+end
+
+function IOSLibrary:_setGuiInteractionActive(active)
+	if active then
+		ContextActionService:BindActionAtPriority(
+			self.CAMERA_ACTION_NAME,
+			function(...) return self:_blockCamera(...) end,
+			false,
+			Enum.ContextActionPriority.High.Value,
+			Enum.UserInputType.MouseButton1,
+			Enum.UserInputType.Touch,
+			Enum.UserInputType.MouseMovement
+		)
+	else
+		ContextActionService:UnbindAction(self.CAMERA_ACTION_NAME)
+	end
+end
+
+function IOSLibrary:_initDragging()
+	local selfRef = self
+
+	self.mainFrame.InputBegan:Connect(function(input)
+		if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and not selfRef.isSliding then
+			selfRef.dragging = true
+			selfRef.dragStart = input.Position
+			selfRef.startPos = selfRef.mainFrame.Position
+			selfRef:_setGuiInteractionActive(true)
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then 
+					selfRef.dragging = false 
+					selfRef:_setGuiInteractionActive(false)
+				end
+			end)
+		end
+	end)
+
+	self.mainFrame.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			selfRef.dragInput = input
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if input == selfRef.dragInput and selfRef.dragging and not selfRef.isSliding then
+			local delta = input.Position - selfRef.dragStart
+			selfRef.mainFrame.Position = UDim2.new(selfRef.startPos.X.Scale, selfRef.startPos.X.Offset + delta.X, selfRef.startPos.Y.Scale, selfRef.startPos.Y.Offset + delta.Y)
+		end
+	end)
+end
+
+function IOSLibrary:BindOpenButton(openButton)
+	local selfRef = self
+
+	openButton.MouseButton1Click:Connect(function()
+		selfRef.isOpen = not selfRef.isOpen
+
+		TweenService:Create(openButton, TweenInfo.new(0.1, Enum.EasingStyle.Quad), {Size = UDim2.new(0, 44, 0, 44)}):Play()
+		task.delay(0.1, function()
+			TweenService:Create(openButton, TweenInfo.new(0.1, Enum.EasingStyle.Quad), {Size = UDim2.new(0, 50, 0, 50)}):Play()
+		end)
+
+		if selfRef.isOpen then
+			selfRef.mainFrame.Visible = true
+			selfRef.mainFrame.Size = UDim2.new(0, 0, 0, 0)
+			selfRef.mainFrame.BackgroundTransparency = 1
+
+			TweenService:Create(selfRef.mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+				Size = UDim2.new(0, 520, 0, 320),
+				BackgroundTransparency = 0.2
+			}):Play()
+		else
+			local closeTween = TweenService:Create(selfRef.mainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+				Size = UDim2.new(0, 0, 0, 0),
+				BackgroundTransparency = 1
+			})
+			closeTween:Play()
+			closeTween.Completed:Connect(function()
+				if not selfRef.isOpen then selfRef.mainFrame.Visible = false end
+			end)
+		end
+	end)
+end
+
+function IOSLibrary:_initGlassEffect()
+	local glassGradient = Instance.new("UIGradient")
+	glassGradient.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.15),
+		NumberSequenceKeypoint.new(0.5, 0.6),
+		NumberSequenceKeypoint.new(1, 0.2)
+	})
+	glassGradient.Rotation = 45
+	glassGradient.Parent = self.mainFrame
+end
+
+function IOSLibrary:_initHeader(titleText)
+	local headerFrame = Instance.new("Frame")
+	headerFrame.Size = UDim2.new(1, 0, 0, 45)
+	headerFrame.BackgroundTransparency = 1
+	headerFrame.Parent = self.mainFrame
+
+	local dotsContainer = Instance.new("Frame")
+	dotsContainer.Size = UDim2.new(0, 70, 0, 45)
+	dotsContainer.Position = UDim2.new(0, 15, 0, 0)
+	dotsContainer.BackgroundTransparency = 1
+	dotsContainer.Parent = headerFrame
+
+	local dotsLayout = Instance.new("UIListLayout")
+	dotsLayout.FillDirection = Enum.FillDirection.Horizontal
+	dotsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	dotsLayout.Padding = UDim.new(0, 6)
+	dotsLayout.Parent = dotsContainer
+
+	local function createStaticDot(order, color)
+		local dot = Instance.new("Frame")
+		dot.Size = UDim2.new(0, 12, 0, 12)
+		dot.BackgroundColor3 = color
+		dot.BorderSizePixel = 0
+		dot.LayoutOrder = order
+		dot.Parent = dotsContainer
+
+		local dotCorner = Instance.new("UICorner")
+		dotCorner.CornerRadius = UDim.new(1, 0)
+		dotCorner.Parent = dot
+	end
+
+	createStaticDot(1, Color3.fromRGB(255, 95, 86))
+	createStaticDot(2, Color3.fromRGB(255, 189, 46))
+	createStaticDot(3, Color3.fromRGB(39, 201, 63))
+
+	local nitroLabel = Instance.new("TextLabel")
+	nitroLabel.Size = UDim2.new(1, -100, 1, 0)
+	nitroLabel.Position = UDim2.new(0, 95, 0, 0)
+	nitroLabel.BackgroundTransparency = 1
+	nitroLabel.Font = Enum.Font.SourceSansBold
+	nitroLabel.Text = titleText or "Dashboard"
+	nitroLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	nitroLabel.TextSize = 20
+	nitroLabel.TextXAlignment = Enum.TextXAlignment.Left
+	nitroLabel.Parent = headerFrame
+
+	local headerDivider = Instance.new("Frame")
+	headerDivider.Size = UDim2.new(1, 0, 0, 1)
+	headerDivider.Position = UDim2.new(0, 0, 0, 45)
+	headerDivider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	headerDivider.BackgroundTransparency = 0.7
+	headerDivider.BorderSizePixel = 0
+	headerDivider.Parent = self.mainFrame
+end
+
+function IOSLibrary:_initSidebarAndContent()
+	self.sidebar = Instance.new("ScrollingFrame")
+	self.sidebar.Size = UDim2.new(0, 140, 1, -46)
+	self.sidebar.Position = UDim2.new(0, 0, 0, 46)
+	self.sidebar.BackgroundTransparency = 1
+	self.sidebar.BorderSizePixel = 0
+	self.sidebar.CanvasSize = UDim2.new(0, 0, 0, 200)
+	self.sidebar.ScrollBarThickness = 2
+	self.sidebar.Parent = self.mainFrame
+
+	local sidebarLayout = Instance.new("UIListLayout")
+	sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	sidebarLayout.Padding = UDim.new(0, 8)
+	sidebarLayout.Parent = self.sidebar
+
+	local verticalDivider = Instance.new("Frame")
+	verticalDivider.Size = UDim2.new(0, 1, 1, -46)
+	verticalDivider.Position = UDim2.new(0, 140, 0, 46)
+	verticalDivider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	verticalDivider.BackgroundTransparency = 0.7
+	verticalDivider.BorderSizePixel = 0
+	verticalDivider.Parent = self.mainFrame
+
+	self.contentArea = Instance.new("Frame")
+	self.contentArea.Size = UDim2.new(1, -141, 1, -46)
+	self.contentArea.Position = UDim2.new(0, 141, 0, 46)
+	self.contentArea.BackgroundTransparency = 1
+	self.contentArea.ClipsDescendants = false
+	self.contentArea.Parent = self.mainFrame
+end
+
+function IOSLibrary:CreateTab(name, icon)
+	local order = #self.allMenuButtons + 1
+
+	local menuBtn = Instance.new("TextButton")
+	menuBtn.Size = UDim2.new(1, -20, 0, 40)
+	menuBtn.Position = UDim2.new(0, 10, 0, 0)
+	menuBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+	menuBtn.BackgroundTransparency = (order == 1) and 0.3 or 0.8
+	menuBtn.Text = (icon or "") .. "  " .. name
+	menuBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	menuBtn.Font = Enum.Font.SourceSansSemibold
+	menuBtn.TextSize = 15
+	menuBtn.BorderSizePixel = 0
+	menuBtn.LayoutOrder = order
+	menuBtn.Parent = self.sidebar
+
+	local mCorner = Instance.new("UICorner")
+	mCorner.CornerRadius = UDim.new(0, 10)
+	mCorner.Parent = menuBtn
+
+	local page = Instance.new("ScrollingFrame")
+	page.Size = UDim2.new(1, 0, 1, 0)
+	page.BackgroundTransparency = 1
+	page.BorderSizePixel = 0
+	page.CanvasSize = UDim2.new(0, 0, 0, 0)
+	page.ScrollBarThickness = 3
+	page.Visible = (order == 1)
+	page.Parent = self.contentArea
+
+	local pageLayout = Instance.new("UIListLayout")
+	pageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	pageLayout.Padding = UDim.new(0, 10)
+	pageLayout.Parent = page
+
+	pageLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		page.CanvasSize = UDim2.new(0, 0, 0, pageLayout.AbsoluteContentSize.Y + 20)
+	end)
+
+	table.insert(self.allMenuButtons, menuBtn)
+	table.insert(self.allPages, page)
+
+	local selfRef = self
+	menuBtn.MouseButton1Click:Connect(function()
+		for _, p in ipairs(selfRef.allPages) do
+			p.Visible = (p == page)
+		end
+		for _, m in ipairs(selfRef.allMenuButtons) do
+			TweenService:Create(m, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+				BackgroundTransparency = (m == menuBtn) and 0.3 or 0.8
+			}):Play()
+		end
+	end)
+
+	return page
+end
+function IOSLibrary:AddSlider(parentPage, title, min, max, default, callback)
+	local sliderBox = Instance.new("Frame")
+	sliderBox.Size = UDim2.new(1, -20, 0, 65)
+	sliderBox.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+	sliderBox.BackgroundTransparency = 0.4
+	sliderBox.BorderSizePixel = 0
+	sliderBox.Parent = parentPage
+
+	local sbCorner = Instance.new("UICorner")
+	sbCorner.CornerRadius = UDim.new(0, 12)
+	sbCorner.Parent = sliderBox
+
+	local sliderTitle = Instance.new("TextLabel")
+	sliderTitle.Size = UDim2.new(0.6, 0, 0, 20)
+	sliderTitle.Position = UDim2.new(0, 15, 0, 10)
+	sliderTitle.BackgroundTransparency = 1
+	sliderTitle.Font = Enum.Font.SourceSansBold
+	sliderTitle.Text = title
+	sliderTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+	sliderTitle.TextSize = 14
+	sliderTitle.TextXAlignment = Enum.TextXAlignment.Left
+	sliderTitle.Parent = sliderBox
+
+	local defaultPercent = math.clamp((default - min) / (max - min), 0, 1)
+
+	local sliderValText = Instance.new("TextLabel")
+	sliderValText.Size = UDim2.new(0.4, -15, 0, 20)
+	sliderValText.Position = UDim2.new(0.6, 0, 0, 10)
+	sliderValText.BackgroundTransparency = 1
+	sliderValText.Font = Enum.Font.SourceSansBold
+	sliderValText.Text = math.floor(default) .. "%"
+	sliderValText.TextColor3 = Color3.fromRGB(100, 180, 255)
+	sliderValText.TextSize = 14
+	sliderValText.TextXAlignment = Enum.TextXAlignment.Right
+	sliderValText.Parent = sliderBox
+
+	local sliderTrack = Instance.new("Frame")
+	sliderTrack.Size = UDim2.new(1, -30, 0, 8)
+	sliderTrack.Position = UDim2.new(0, 15, 0, 42)
+	sliderTrack.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+	sliderTrack.BorderSizePixel = 0
+	sliderTrack.Parent = sliderBox
+
+	local stCorner = Instance.new("UICorner")
+	stCorner.CornerRadius = UDim.new(1, 0)
+	stCorner.Parent = sliderTrack
+
+	local sliderFill = Instance.new("Frame")
+	sliderFill.Size = UDim2.new(defaultPercent, 0, 1, 0)
+	sliderFill.BackgroundColor3 = Color3.fromRGB(52, 199, 89)
+	sliderFill.BorderSizePixel = 0
+	sliderFill.Parent = sliderTrack
+
+	local sfCorner = Instance.new("UICorner")
+	sfCorner.CornerRadius = UDim.new(1, 0)
+	sfCorner.Parent = sliderFill
+
+	local sliderKnob = Instance.new("Frame")
+	sliderKnob.Size = UDim2.new(0, 18, 0, 18)
+	sliderKnob.AnchorPoint = Vector2.new(0.5, 0.5)
+	sliderKnob.Position = UDim2.new(defaultPercent, 0, 0.5, 0)
+	sliderKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	sliderKnob.BorderSizePixel = 0
+	sliderKnob.Parent = sliderTrack
+
+	local skCorner = Instance.new("UICorner")
+	skCorner.CornerRadius = UDim.new(1, 0)
+	skCorner.Parent = sliderKnob
+
+	local selfRef = self
+
+	local function updateSlider(input)
+		local pos = sliderTrack.AbsolutePosition.X
+		local size = sliderTrack.AbsoluteSize.X
+		local percent = math.clamp((input.Position.X - pos) / size, 0, 1)
+		local value = min + (percent * (max - min))
+
+		sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+		sliderKnob.Position = UDim2.new(percent, 0, 0.5, 0)
+		sliderValText.Text = math.floor(value) .. "%"
+
+		if callback then callback(value) end
+	end
+
+	sliderTrack.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			selfRef.isSliding = true
+			selfRef:_setGuiInteractionActive(true)
+			updateSlider(input)
+		end
+	end)
+
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			if selfRef.isSliding then
+				selfRef.isSliding = false
+				selfRef:_setGuiInteractionActive(false)
+			end
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if selfRef.isSliding and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			updateSlider(input)
+		end
+	end)
+end
+
+function IOSLibrary:AddWiFiDropdown(parentPage, title, savedNetworks, nearbyNetworks, callback, settingsCallback)
+	local isOpen = false
+	local selectedNetwork = savedNetworks[1] or "ไม่ได้เชื่อมต่อ"
+
+	local dropBox = Instance.new("Frame")
+	dropBox.Size = UDim2.new(1, -20, 0, 45)
+	dropBox.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+	dropBox.BackgroundTransparency = 0.4
+	dropBox.BorderSizePixel = 0
+	dropBox.Parent = parentPage
+
+	local dbCorner = Instance.new("UICorner")
+	dbCorner.CornerRadius = UDim.new(0, 12)
+	dbCorner.Parent = dropBox
+
+	local dropTitle = Instance.new("TextButton")
+	dropTitle.Size = UDim2.new(1, 0, 1, 0)
+	dropTitle.BackgroundTransparency = 1
+	dropTitle.Font = Enum.Font.SourceSansBold
+	dropTitle.Text = "  📶  " .. title .. ": " .. selectedNetwork
+	dropTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+	dropTitle.TextSize = 14
+	dropTitle.TextXAlignment = Enum.TextXAlignment.Left
+	dropTitle.Parent = dropBox
+
+	local arrowLabel = Instance.new("TextLabel")
+	arrowLabel.Size = UDim2.new(0, 30, 1, 0)
+	arrowLabel.Position = UDim2.new(1, -35, 0, 0)
+	arrowLabel.BackgroundTransparency = 1
+	arrowLabel.Font = Enum.Font.SourceSansBold
+	arrowLabel.Text = "▾"
+	arrowLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+	arrowLabel.TextSize = 16
+	arrowLabel.Parent = dropBox
+
+	local wifiPopup = Instance.new("Frame")
+	wifiPopup.Name = "WiFiPopupCard"
+	wifiPopup.Size = UDim2.new(0, 220, 0, 240)
+	wifiPopup.Position = UDim2.new(1, 10, 0, 0)
+	wifiPopup.BackgroundColor3 = Color3.fromRGB(32, 32, 40)
+	wifiPopup.BackgroundTransparency = 0.1
+	wifiPopup.BorderSizePixel = 0
+	wifiPopup.Visible = false
+	wifiPopup.ZIndex = 50
+	wifiPopup.ClipsDescendants = true
+	wifiPopup.Parent = dropBox
+
+	local wpCorner = Instance.new("UICorner")
+	wpCorner.CornerRadius = UDim.new(0, 16)
+	wpCorner.Parent = wifiPopup
+
+	local wpStroke = Instance.new("UIStroke")
+	wpStroke.Color = Color3.fromRGB(255, 255, 255)
+	wpStroke.Transparency = 0.5
+	wpStroke.Thickness = 1
+	wpStroke.Parent = wifiPopup
+
+	local popupHeader = Instance.new("TextLabel")
+	popupHeader.Size = UDim2.new(1, 0, 0, 35)
+	popupHeader.BackgroundTransparency = 1
+	popupHeader.Font = Enum.Font.SourceSansBold
+	popupHeader.Text = "📶  Wi-Fi"
+	popupHeader.TextColor3 = Color3.fromRGB(255, 255, 255)
+	popupHeader.TextSize = 15
+	popupHeader.ZIndex = 51
+	popupHeader.Parent = wifiPopup
+
+	local headerDiv = Instance.new("Frame")
+	headerDiv.Size = UDim2.new(1, 0, 0, 1)
+	headerDiv.Position = UDim2.new(0, 0, 0, 35)
+	headerDiv.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	headerDiv.BackgroundTransparency = 0.7
+	headerDiv.BorderSizePixel = 0
+	headerDiv.ZIndex = 51
+	headerDiv.Parent = wifiPopup
+
+	local wifiScroll = Instance.new("ScrollingFrame")
+	wifiScroll.Size = UDim2.new(1, 0, 1, -80)
+	wifiScroll.Position = UDim2.new(0, 0, 0, 36)
+	wifiScroll.BackgroundTransparency = 1
+	wifiScroll.BorderSizePixel = 0
+	wifiScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	wifiScroll.ScrollBarThickness = 2
+	wifiScroll.ZIndex = 51
+	wifiScroll.Parent = wifiPopup
+
+	local scrollLayout = Instance.new("UIListLayout")
+	scrollLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	scrollLayout.Padding = UDim.new(0, 4)
+	scrollLayout.Parent = wifiScroll
+
+	scrollLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		wifiScroll.CanvasSize = UDim2.new(0, 0, 0, scrollLayout.AbsoluteContentSize.Y + 10)
+	end)
+
+	local function addSectionLabel(text)
+		local lbl = Instance.new("TextLabel")
+		lbl.Size = UDim2.new(1, -15, 0, 22)
+		lbl.BackgroundTransparency = 1
+		lbl.Font = Enum.Font.SourceSansBold
+		lbl.Text = text
+		lbl.TextColor3 = Color3.fromRGB(160, 160, 160)
+		lbl.TextSize = 12
+		lbl.TextXAlignment = Enum.TextXAlignment.Left
+		lbl.ZIndex = 52
+		lbl.Parent = wifiScroll
+	end
+
+	local function addNetworkItem(netName, statusText)
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(1, 0, 0, 38)
+		btn.BackgroundTransparency = 1
+		btn.BorderSizePixel = 0
+		btn.ZIndex = 52
+		btn.Parent = wifiScroll
+
+		local nLabel = Instance.new("TextLabel")
+		nLabel.Size = UDim2.new(1, -15, 0, 18)
+		nLabel.Position = UDim2.new(0, 12, 0, 3)
+		nLabel.BackgroundTransparency = 1
+		nLabel.Font = Enum.Font.SourceSansBold
+		nLabel.Text = netName
+		nLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		nLabel.TextSize = 13
+		nLabel.TextXAlignment = Enum.TextXAlignment.Left
+		nLabel.ZIndex = 53
+		nLabel.Parent = btn
+
+		local sLabel = Instance.new("TextLabel")
+		sLabel.Size = UDim2.new(1, -15, 0, 14)
+		sLabel.Position = UDim2.new(0, 12, 0, 20)
+		sLabel.BackgroundTransparency = 1
+		sLabel.Font = Enum.Font.SourceSans
+		sLabel.Text = statusText or ""
+		sLabel.TextColor3 = Color3.fromRGB(170, 170, 170)
+		sLabel.TextSize = 11
+		sLabel.TextXAlignment = Enum.TextXAlignment.Left
+		sLabel.ZIndex = 53
+		sLabel.Parent = btn
+
+		btn.MouseButton1Click:Connect(function()
+			selectedNetwork = netName
+			dropTitle.Text = "  📶  " .. title .. ": " .. selectedNetwork
+			isOpen = false
+			wifiPopup.Visible = false
+			arrowLabel.Text = "▾"
+			if callback then callback(netName) end
+		end)
+	end
+
+	if #savedNetworks > 0 then
+		addSectionLabel("เครือข่ายที่บันทึกไว้")
+		for _, net in ipairs(savedNetworks) do
+			addNetworkItem(net, "เชื่อมต่อแล้ว")
+		end
+	end
+
+	if #nearbyNetworks > 0 then
+		addSectionLabel("เครือข่ายในบริเวณใกล้เคียง")
+		for _, net in ipairs(nearbyNetworks) do
+			addNetworkItem(net, "สัญญาณปลอดภัย")
+		end
+	end
+
+	local settingsBtn = Instance.new("TextButton")
+	settingsBtn.Size = UDim2.new(1, 0, 0, 44)
+	settingsBtn.Position = UDim2.new(0, 0, 1, -44)
+	settingsBtn.BackgroundTransparency = 1
+	settingsBtn.Font = Enum.Font.SourceSansBold
+	settingsBtn.Text = "การตั้งค่า Wi-Fi เพิ่มเติม"
+	settingsBtn.TextColor3 = Color3.fromRGB(100, 180, 255)
+	settingsBtn.TextSize = 13
+	settingsBtn.ZIndex = 51
+	settingsBtn.Parent = wifiPopup
+
+	settingsBtn.MouseButton1Click:Connect(function()
+		isOpen = false
+		wifiPopup.Visible = false
+		arrowLabel.Text = "▾"
+		if settingsCallback then settingsCallback() end
+	end)
+
+	dropTitle.MouseButton1Click:Connect(function()
+		isOpen = not isOpen
+		wifiPopup.Visible = isOpen
+		arrowLabel.Text = isOpen and "▴" or "▾"
+	end)
+end
+
+function IOSLibrary:AddTextBox(parentPage, title, placeholder, callback)
+	local textBoxContainer = Instance.new("Frame")
+	textBoxContainer.Size = UDim2.new(1, -20, 0, 65)
+	textBoxContainer.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+	textBoxContainer.BackgroundTransparency = 0.4
+	textBoxContainer.BorderSizePixel = 0
+	textBoxContainer.Parent = parentPage
+
+	local tbcCorner = Instance.new("UICorner")
+	tbcCorner.CornerRadius = UDim.new(0, 12)
+	tbcCorner.Parent = textBoxContainer
+
+	local boxTitle = Instance.new("TextLabel")
+	boxTitle.Size = UDim2.new(1, -20, 0, 20)
+	boxTitle.Position = UDim2.new(0, 15, 0, 8)
+	boxTitle.BackgroundTransparency = 1
+	boxTitle.Font = Enum.Font.SourceSansBold
+	boxTitle.Text = title
+	boxTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+	boxTitle.TextSize = 14
+	boxTitle.TextXAlignment = Enum.TextXAlignment.Left
+	boxTitle.Parent = textBoxContainer
+
+	local inputBox = Instance.new("TextBox")
+	inputBox.Size = UDim2.new(1, -30, 0, 28)
+	inputBox.Position = UDim2.new(0, 15, 0, 30)
+	inputBox.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+	inputBox.BackgroundTransparency = 0.5
+	inputBox.BorderSizePixel = 0
+	inputBox.Font = Enum.Font.SourceSans
+	inputBox.PlaceholderText = placeholder or "พิมพ์ข้อความที่นี่..."
+	inputBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+	inputBox.Text = ""
+	inputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+	inputBox.TextSize = 14
+	inputBox.TextXAlignment = Enum.TextXAlignment.Left
+	inputBox.Parent = textBoxContainer
+
+	local ibCorner = Instance.new("UICorner")
+	ibCorner.CornerRadius = UDim.new(0, 8)
+	ibCorner.Parent = inputBox
+
+	inputBox.FocusLost:Connect(function(enterPressed)
+		if callback then callback(inputBox.Text, enterPressed) end
+	end)
+end
+
+return IOSLibrary
